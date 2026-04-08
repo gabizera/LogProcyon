@@ -141,6 +141,44 @@ export class LogsService {
     return rows[0];
   }
 
+  async getStorage() {
+    // Logs por dia com estimativa de tamanho
+    const dailySql = `
+      SELECT
+        toDate(timestamp) AS dia,
+        count() AS total,
+        sum(length(payload_raw)) AS payload_bytes
+      FROM nat_logs
+      GROUP BY dia
+      ORDER BY dia DESC
+      LIMIT 90
+    `;
+
+    // Tamanho total em disco (comprimido) via system.parts
+    const diskSql = `
+      SELECT
+        sum(data_compressed_bytes) AS compressed,
+        sum(data_uncompressed_bytes) AS uncompressed,
+        sum(rows) AS rows
+      FROM system.parts
+      WHERE table = 'nat_logs' AND active = 1
+    `;
+
+    const [daily, disk] = await Promise.all([
+      this.clickhouse.query(dailySql, {}),
+      this.clickhouse.query<{ compressed: number; uncompressed: number; rows: number }>(diskSql, {}),
+    ]);
+
+    return {
+      daily,
+      disk: {
+        compressed_bytes:   Number(disk[0]?.compressed ?? 0),
+        uncompressed_bytes: Number(disk[0]?.uncompressed ?? 0),
+        total_rows:         Number(disk[0]?.rows ?? 0),
+      },
+    };
+  }
+
   async getStats(dto: StatsQueryDto) {
     const conditions: string[] = [];
     const params: Record<string, unknown> = {};

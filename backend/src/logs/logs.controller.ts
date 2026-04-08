@@ -17,6 +17,11 @@ export class LogsController {
     return this.logsService.getStats(dto);
   }
 
+  @Get('storage')
+  storage() {
+    return this.logsService.getStorage();
+  }
+
   @Get('judicial')
   @Roles('admin', 'operator')
   judicial(@Query() dto: JudicialQueryDto) {

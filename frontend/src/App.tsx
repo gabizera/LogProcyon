@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -7,10 +8,11 @@ import {
   Users,
   Settings,
   Wifi,
-  Activity,
+  HardDrive,
   LogOut,
 } from 'lucide-react';
 import { useAuth } from './auth';
+import api from './api';
 import LoginPage     from './pages/Login';
 import Dashboard     from './pages/Dashboard';
 import LogSearch     from './pages/LogSearch';
@@ -18,11 +20,13 @@ import JudicialSearch from './pages/JudicialSearch';
 import Inputs        from './pages/Inputs';
 import UsersPage     from './pages/Users';
 import SettingsPage  from './pages/Settings';
+import StoragePage   from './pages/Storage';
 
 const monitoringNav = [
   { to: '/',         icon: LayoutDashboard, label: 'Dashboard'         },
   { to: '/logs',     icon: Search,          label: 'Busca de Logs'     },
   { to: '/judicial', icon: Shield,          label: 'Consulta Judicial' },
+  { to: '/storage',  icon: HardDrive,       label: 'Armazenamento'     },
 ];
 
 const systemNav = [
@@ -64,6 +68,14 @@ function NavSection({ title, items }: { title: string; items: typeof monitoringN
 
 export default function App() {
   const { user, logout, loading } = useAuth();
+  const [online, setOnline] = useState(true);
+
+  useEffect(() => {
+    const check = () => api.get('/config').then(() => setOnline(true)).catch(() => setOnline(false));
+    check();
+    const id = setInterval(check, 15000);
+    return () => clearInterval(id);
+  }, []);
 
   if (loading) {
     return (
@@ -116,16 +128,19 @@ export default function App() {
         <div className="p-3 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
           <div
             className="rounded-xl px-3 py-2.5 mb-2"
-            style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.12)' }}
+            style={{
+              background: online ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)',
+              border: `1px solid ${online ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)'}`,
+            }}
           >
             <div className="flex items-center gap-2">
-              <div className="live-dot w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--accent-green)' }} />
-              <span className="text-[11px] font-semibold" style={{ color: 'var(--accent-green)', fontFamily: 'var(--font-mono)' }}>
-                SISTEMA ATIVO
+              <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${online ? 'live-dot' : ''}`} style={{ background: online ? 'var(--accent-green)' : 'var(--accent-red)' }} />
+              <span className="text-[11px] font-semibold" style={{ color: online ? 'var(--accent-green)' : 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>
+                {online ? 'CONECTADO' : 'SEM CONEXÃO'}
               </span>
             </div>
             <div className="mt-1 text-[10px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-              Coletando em tempo real
+              {online ? 'Backend operacional' : 'Verifique o backend'}
             </div>
           </div>
 
@@ -157,6 +172,7 @@ export default function App() {
           <Route path="/"          element={<Dashboard />} />
           <Route path="/logs"      element={<LogSearch />} />
           <Route path="/judicial"  element={<JudicialSearch />} />
+          <Route path="/storage"   element={<StoragePage />} />
           <Route path="/inputs"    element={<Inputs />} />
           <Route path="/users"     element={<UsersPage />} />
           <Route path="/settings"  element={<SettingsPage />} />
