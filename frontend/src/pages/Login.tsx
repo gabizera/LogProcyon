@@ -138,7 +138,7 @@ export default function LoginPage() {
           className="mt-6 text-center text-[10px]"
           style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}
         >
-          LogProcyon v1.2.0
+          LogProcyon
         </div>
       </div>
     </div>

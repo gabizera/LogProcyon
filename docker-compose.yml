@@ -25,6 +25,7 @@ services:
     restart: unless-stopped
 
   collector:
+    image: ghcr.io/gabizera/logprocyon-collector:latest
     build:
       context: ./collector
     container_name: log-collector
@@ -44,6 +45,7 @@ services:
     restart: unless-stopped
 
   backend:
+    image: ghcr.io/gabizera/logprocyon-backend:latest
     build:
       context: ./backend
     container_name: log-backend
@@ -62,6 +64,7 @@ services:
     restart: unless-stopped
 
   frontend:
+    image: ghcr.io/gabizera/logprocyon-frontend:latest
     build:
       context: ./frontend
     container_name: log-frontend

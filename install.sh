@@ -7,9 +7,8 @@
 # ============================================================
 set -euo pipefail
 
-REPO_URL="https://github.com/gabizera/LogProcyon.git"
+REPO_RAW="https://raw.githubusercontent.com/gabizera/LogProcyon/main"
 INSTALL_DIR="/opt/logprocyon"
-COMPOSE_VERSION="v2"   # usa 'docker compose' (plugin v2)
 
 # ── Cores ────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -30,7 +29,6 @@ step "Verificando pré-requisitos"
 if [ -f /etc/os-release ]; then
   . /etc/os-release
   OS_ID="$ID"
-  OS_VERSION="$VERSION_ID"
 else
   error "Sistema operacional não suportado (sem /etc/os-release)"
 fi
@@ -47,8 +45,7 @@ info "Diretório de instalação: $INSTALL_DIR"
 step "Instalando dependências do sistema"
 
 apt-get update -qq
-apt-get install -y -qq \
-  ca-certificates curl gnupg lsb-release git ufw 2>/dev/null
+apt-get install -y -qq ca-certificates curl ufw 2>/dev/null
 
 success "Dependências instaladas"
 
@@ -65,7 +62,6 @@ else
   success "Docker instalado"
 fi
 
-# Verificar docker compose plugin
 if ! docker compose version &>/dev/null 2>&1; then
   info "Instalando docker-compose-plugin..."
   apt-get install -y -qq docker-compose-plugin
@@ -73,17 +69,16 @@ fi
 
 success "Docker Compose: $(docker compose version --short 2>/dev/null || echo 'ok')"
 
-# ── Clonar / atualizar repositório ───────────────────────────
-step "Clonando repositório"
+# ── Baixar arquivos do projeto ────────────────────────────────
+step "Baixando LogProcyon"
 
-if [ -d "$INSTALL_DIR/.git" ]; then
-  info "Repositório já existe — atualizando..."
-  git -C "$INSTALL_DIR" pull --ff-only
-  success "Repositório atualizado"
-else
-  git clone "$REPO_URL" "$INSTALL_DIR"
-  success "Repositório clonado em $INSTALL_DIR"
-fi
+mkdir -p "$INSTALL_DIR/clickhouse"
+
+# Baixar apenas os arquivos necessários (sem git clone)
+curl -fsSL "$REPO_RAW/docker-compose.yml"     -o "$INSTALL_DIR/docker-compose.yml"
+curl -fsSL "$REPO_RAW/clickhouse/init.sql"     -o "$INSTALL_DIR/clickhouse/init.sql"
+
+success "Arquivos baixados em $INSTALL_DIR"
 
 cd "$INSTALL_DIR"
 
@@ -116,7 +111,6 @@ EOF
     echo ""
     read -rp "  Timezone offset [-3]: " TZ_INPUT
     TZ_INPUT="${TZ_INPUT:--3}"
-    # Validar: aceitar apenas números com opcional sinal
     if [[ "$TZ_INPUT" =~ ^-?[0-9]+$ ]]; then
       sed -i "s/TZ_OFFSET_HOURS=.*/TZ_OFFSET_HOURS=$TZ_INPUT/" .env
       success "Timezone configurado: UTC$TZ_INPUT"
@@ -127,7 +121,6 @@ EOF
     success ".env criado com timezone padrão UTC-3"
   fi
 
-  # Proteger .env (só root lê)
   chmod 600 .env
   success "JWT_SECRET gerado automaticamente"
 fi
@@ -144,10 +137,11 @@ else
   info "  ufw allow 80/tcp && ufw allow 514/udp"
 fi
 
-# ── Build e inicialização ─────────────────────────────────────
-step "Construindo e iniciando serviços"
+# ── Pull e inicialização ─────────────────────────────────────
+step "Baixando e iniciando serviços"
 
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 
 # Aguardar ClickHouse ficar healthy
 info "Aguardando ClickHouse inicializar..."
@@ -185,15 +179,11 @@ echo ""
 echo -e "  ${RED}${BOLD}IMPORTANTE: Troque a senha do admin imediatamente!${RESET}"
 echo -e "  Acesse: Usuários → Trocar senha"
 echo ""
-echo -e "  ${BOLD}Segurança:${RESET}"
-echo "    JWT_SECRET gerado automaticamente em .env"
-echo "    Para HTTPS, configure um reverse proxy (nginx/caddy) com SSL"
+echo -e "  ${BOLD}Atualizar:${RESET}"
+echo "    cd $INSTALL_DIR && docker compose pull && docker compose up -d"
 echo ""
 echo -e "  ${BOLD}Logs:${RESET}"
 echo "    docker logs log-collector -f   # pacotes recebidos"
 echo "    docker logs log-backend -f     # API"
 echo "    docker logs log-clickhouse -f  # banco"
-echo ""
-echo -e "  ${BOLD}Configurar equipamento Cisco:${RESET}"
-echo "    ip nat log translations flow-export v9 udp destination ${SERVER_IP} 514"
 echo ""

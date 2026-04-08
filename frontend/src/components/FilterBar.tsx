@@ -53,8 +53,8 @@ export default function FilterBar({ onApply, onClear }: FilterBarProps) {
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
         {[
-          { name: 'ip_publico',  label: 'IP Público',   placeholder: '203.0.113.1', type: 'text'           },
-          { name: 'ip_privado',  label: 'IP Privado',   placeholder: '10.0.0.1',    type: 'text'           },
+          { name: 'ip_publico',  label: 'IP Público',   placeholder: 'Filtrar por IP', type: 'text'           },
+          { name: 'ip_privado',  label: 'IP Privado',   placeholder: 'Filtrar por IP', type: 'text'           },
         ].map(f => (
           <div key={f.name} className="flex flex-col gap-1.5">
             <label className="text-[10px] font-semibold uppercase tracking-wider" style={labelStyle}>{f.label}</label>

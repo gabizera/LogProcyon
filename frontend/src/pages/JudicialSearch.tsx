@@ -84,8 +84,8 @@ export default function JudicialSearch() {
       >
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
           {[
-            { key: 'ip_publico', label: 'IP Público',  placeholder: '177.86.123.145', type: 'text'   },
-            { key: 'porta',      label: 'Porta',        placeholder: '29100',           type: 'number' },
+            { key: 'ip_publico', label: 'IP Público',  placeholder: 'Ex: 200.0.0.1', type: 'text'   },
+            { key: 'porta',      label: 'Porta',        placeholder: 'Ex: 1024',        type: 'number' },
           ].map(f => (
             <div key={f.key} className="flex flex-col gap-1.5">
               <label

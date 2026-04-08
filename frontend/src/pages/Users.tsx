@@ -34,8 +34,8 @@ function CreateForm({ onSave, onCancel }: {
     <form onSubmit={handleSubmit} className="rounded-xl p-5 mb-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-medium)' }}>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         {[
-          { key: 'username', label: 'Username *', placeholder: 'joao.silva' },
-          { key: 'name',     label: 'Nome',       placeholder: 'João Silva'  },
+          { key: 'username', label: 'Username *', placeholder: 'nome.usuario' },
+          { key: 'name',     label: 'Nome',       placeholder: 'Nome completo'  },
         ].map(f => (
           <div key={f.key} className="flex flex-col gap-1.5">
             <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{f.label}</label>
