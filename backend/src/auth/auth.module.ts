@@ -22,7 +22,7 @@ if (!JWT_SECRET || JWT_SECRET.length < 32) {
       secret: JWT_SECRET,
       signOptions: { expiresIn: '8h' },
     }),
-    ThrottlerModule.forRoot([{ ttl: 900000, limit: 10 }]),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
   ],
   providers: [
     AuthService,
