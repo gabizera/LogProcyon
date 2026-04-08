@@ -3,4 +3,5 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
 COPY collector.js .
+COPY parsers/ ./parsers/
 CMD ["node", "collector.js"]
