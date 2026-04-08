@@ -69,9 +69,12 @@ function NavSection({ title, items }: { title: string; items: typeof monitoringN
 export default function App() {
   const { user, logout, loading } = useAuth();
   const [online, setOnline] = useState(true);
+  const [platformName, setPlatformName] = useState('LogProcyon');
 
   useEffect(() => {
-    const check = () => api.get('/config').then(() => setOnline(true)).catch(() => setOnline(false));
+    const check = () => api.get('/config')
+      .then(({ data }) => { setOnline(true); if (data.platform_name) { setPlatformName(data.platform_name); document.title = data.platform_name; } })
+      .catch(() => setOnline(false));
     check();
     const id = setInterval(check, 15000);
     return () => clearInterval(id);
@@ -85,7 +88,7 @@ export default function App() {
     );
   }
 
-  if (!user) return <LoginPage />;
+  if (!user) return <LoginPage platformName={platformName} />;
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
@@ -110,7 +113,7 @@ export default function App() {
           </div>
           <div className="min-w-0">
             <div className="text-sm font-bold tracking-tight truncate" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
-              LogProcyon
+              {platformName}
             </div>
             <div className="text-[9px] font-medium tracking-widest uppercase truncate" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
               NAT · CGNAT · BPA

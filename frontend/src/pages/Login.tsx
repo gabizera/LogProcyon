@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Wifi, LogIn, AlertCircle } from 'lucide-react';
 import { useAuth } from '../auth';
 
-export default function LoginPage() {
+export default function LoginPage({ platformName = 'LogProcyon' }: { platformName?: string }) {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -54,7 +54,7 @@ export default function LoginPage() {
             className="text-xl font-bold tracking-tight"
             style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
           >
-            LogProcyon
+            {platformName}
           </h1>
           <span
             className="text-[10px] font-medium tracking-widest uppercase mt-1"
@@ -138,7 +138,7 @@ export default function LoginPage() {
           className="mt-6 text-center text-[10px]"
           style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}
         >
-          LogProcyon
+          {platformName}
         </div>
       </div>
     </div>
