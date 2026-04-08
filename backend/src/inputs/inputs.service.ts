@@ -28,8 +28,10 @@ export class InputsService implements OnModuleInit {
 
   onModuleInit() {
     this.load();
-    if (this.inputs.length === 0) {
-      this.seed();
+    if (!fs.existsSync(this.filePath)) {
+      this.inputs = [];
+      this.save();
+      this.logger.log('Created empty inputs.json — configure inputs via Web UI');
     }
   }
 
@@ -52,23 +54,6 @@ export class InputsService implements OnModuleInit {
     } catch (e) {
       this.logger.error('Could not save inputs: ' + e.message);
     }
-  }
-
-  private seed() {
-    const defaultInput: Input = {
-      id: crypto.randomUUID(),
-      name: 'Cisco - Default',
-      equipment_type: 'cisco',
-      protocol_type: 'netflow_v9',
-      source_ip: '',
-      port: 514,
-      description: 'Cisco NAT Event Logging via NetFlow v9',
-      enabled: true,
-      created_at: new Date().toISOString(),
-    };
-    this.inputs = [defaultInput];
-    this.save();
-    this.logger.log('Seeded default input');
   }
 
   findAll(): Input[] {
