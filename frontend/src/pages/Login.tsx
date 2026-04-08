@@ -44,8 +44,8 @@ export default function LoginPage() {
           <div
             className="flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
             style={{
-              background: 'linear-gradient(135deg, rgba(0,212,255,0.15), rgba(99,102,241,0.15))',
-              border: '1px solid rgba(0,212,255,0.25)',
+              background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(99,102,241,0.15))',
+              border: '1px solid rgba(59,130,246,0.25)',
             }}
           >
             <Wifi size={24} style={{ color: 'var(--accent-cyan)' }} />

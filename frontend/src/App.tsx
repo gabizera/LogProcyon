@@ -90,8 +90,8 @@ export default function App() {
           <div
             className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0"
             style={{
-              background: 'linear-gradient(135deg, rgba(0,212,255,0.15), rgba(99,102,241,0.15))',
-              border: '1px solid rgba(0,212,255,0.2)',
+              background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(99,102,241,0.15))',
+              border: '1px solid rgba(59,130,246,0.2)',
             }}
           >
             <Wifi size={15} style={{ color: 'var(--accent-cyan)' }} />

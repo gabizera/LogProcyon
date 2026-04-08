@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Database, CalendarDays, Globe, MonitorSmartphone, RefreshCw, TrendingUp } from 'lucide-react';
+import { Database, CalendarDays, Globe, MonitorSmartphone, RefreshCw, BarChart3 } from 'lucide-react';
 import { fetchStats, type StatsResponse } from '../api';
 import { VolumeLineChart, TopBarChart, DistributionPieChart } from '../components/Charts';
 
@@ -34,8 +34,8 @@ function ChartCard({ title, subtitle, children, index }: {
       className="animate-card rounded-xl p-5"
       style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-card)', animationDelay: `${(index + 4) * 0.06}s` }}
     >
-      <div className="flex items-center gap-2 mb-5">
-        <TrendingUp size={13} style={{ color: 'var(--accent-cyan)', flexShrink: 0 }} />
+      <div className="flex items-center gap-2 mb-4">
+        <BarChart3 size={13} style={{ color: '#64748b', flexShrink: 0 }} />
         <div>
           <h3 className="text-[12px] font-semibold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>{title}</h3>
           {subtitle && <div className="text-[10px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{subtitle}</div>}
@@ -97,10 +97,10 @@ export default function Dashboard() {
   }
 
   const statCards = [
-    { icon: Database,          label: 'Total de Logs',       value: stats?.total_logs          ?? 0, color: 'var(--accent-cyan)'   },
-    { icon: CalendarDays,      label: 'Logs Hoje',           value: stats?.logs_hoje           ?? 0, color: 'var(--accent-green)'  },
-    { icon: Globe,             label: 'IPs Públicos Únicos', value: stats?.ips_publicos_unicos ?? 0, color: 'var(--accent-blue)'   },
-    { icon: MonitorSmartphone, label: 'IPs Privados Únicos', value: stats?.ips_privados_unicos ?? 0, color: 'var(--accent-purple)' },
+    { icon: Database,          label: 'Total de Logs',       value: stats?.total_logs          ?? 0, color: '#3b82f6' },
+    { icon: CalendarDays,      label: 'Logs Hoje',           value: stats?.logs_hoje           ?? 0, color: '#22c55e' },
+    { icon: Globe,             label: 'IPs Públicos Únicos', value: stats?.ips_publicos_unicos ?? 0, color: '#6366f1' },
+    { icon: MonitorSmartphone, label: 'IPs Privados Únicos', value: stats?.ips_privados_unicos ?? 0, color: '#8b5cf6' },
   ];
 
   return (
@@ -142,14 +142,14 @@ export default function Dashboard() {
           <VolumeLineChart data={(stats?.volume_24h ?? []) as Record<string, unknown>[]} xKey="hora" yKey="total" />
         </ChartCard>
         <ChartCard title="Top 10 IPs Públicos" subtitle="Por volume de eventos" index={1}>
-          <TopBarChart data={(stats?.top_ips_publicos ?? []) as Record<string, unknown>[]} xKey="ip" yKey="total" />
+          <TopBarChart data={(stats?.top_ips_publicos ?? []) as Record<string, unknown>[]} xKey="ip" yKey="total" color="#6366f1" />
         </ChartCard>
       </div>
 
       {/* Row 2: Top Privados + Distribuição NAT */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         <ChartCard title="Top 10 IPs Privados" subtitle="Assinantes mais ativos" index={2}>
-          <TopBarChart data={(stats?.top_ips_privados ?? []) as Record<string, unknown>[]} xKey="ip" yKey="total" />
+          <TopBarChart data={(stats?.top_ips_privados ?? []) as Record<string, unknown>[]} xKey="ip" yKey="total" color="#8b5cf6" />
         </ChartCard>
         <ChartCard title="Distribuição por Tipo NAT" subtitle="CGNAT · BPA · Estático" index={3}>
           <DistributionPieChart data={(stats?.distribuicao_tipo_nat ?? []) as Record<string, unknown>[]} nameKey="tipo" valueKey="total" />
@@ -162,7 +162,7 @@ export default function Dashboard() {
           <DistributionPieChart data={(stats?.distribuicao_protocolo ?? []) as Record<string, unknown>[]} nameKey="protocolo" valueKey="total" />
         </ChartCard>
         <ChartCard title="Volume por Equipamento" subtitle="Origem dos logs" index={5}>
-          <TopBarChart data={(stats?.distribuicao_equipamento ?? []) as Record<string, unknown>[]} xKey="equipamento" yKey="total" />
+          <TopBarChart data={(stats?.distribuicao_equipamento ?? []) as Record<string, unknown>[]} xKey="equipamento" yKey="total" color="#06b6d4" />
         </ChartCard>
       </div>
     </div>
