@@ -110,20 +110,33 @@ export function VolumeLineChart({ data, xKey, yKey, height = 260, color = PALETT
 
 interface BarChartProps extends ChartProps { xKey: string; yKey: string; color?: string; }
 
-export function TopBarChart({ data, xKey, yKey, height = 260, color = PALETTE.primary }: BarChartProps) {
+function TruncatedTick({ x, y, payload }: { x: number; y: number; payload: { value: string } }) {
+  const label = String(payload.value);
+  const maxLen = 15;
+  const display = label.length > maxLen ? label.slice(0, maxLen) + '…' : label;
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <title>{label}</title>
+      <text x={0} y={0} dy={12} textAnchor="end" fill={LABEL_COLOR} fontSize={9} fontFamily={MONO} transform="rotate(-35)">
+        {display}
+      </text>
+    </g>
+  );
+}
+
+export function TopBarChart({ data, xKey, yKey, height = 280, color = PALETTE.primary }: BarChartProps) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <ReBarChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: -8 }} barCategoryGap="20%">
+      <ReBarChart data={data} margin={{ top: 8, right: 12, bottom: 8, left: -8 }} barCategoryGap="20%">
         <CartesianGrid stroke={GRID_COLOR} strokeDasharray="none" vertical={false} />
         <XAxis
           dataKey={xKey}
           stroke={AXIS_COLOR}
-          tick={{ fill: LABEL_COLOR, fontSize: 9, fontFamily: MONO }}
+          tick={TruncatedTick as never}
           axisLine={false}
           tickLine={false}
-          angle={-25}
-          textAnchor="end"
-          height={50}
+          height={60}
+          interval={0}
         />
         <YAxis
           stroke={AXIS_COLOR}
