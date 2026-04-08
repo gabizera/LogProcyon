@@ -72,7 +72,7 @@ export default function App() {
   const [platformName, setPlatformName] = useState('LogProcyon');
 
   useEffect(() => {
-    const check = () => api.get('/config')
+    const check = () => api.get('/config/public')
       .then(({ data }) => { setOnline(true); if (data.platform_name) { setPlatformName(data.platform_name); document.title = data.platform_name; } })
       .catch(() => setOnline(false));
     check();

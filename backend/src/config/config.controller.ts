@@ -1,6 +1,7 @@
 import { Controller, Get, Put, Body } from '@nestjs/common';
 import { ConfigService } from './config.service';
 import { Roles } from '../auth/roles.decorator';
+import { Public } from '../auth/public.decorator';
 import { IsNumber, IsOptional, IsString, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -31,6 +32,13 @@ export class ConfigController {
   @Get()
   getConfig() {
     return this.configService.getConfig();
+  }
+
+  @Public()
+  @Get('public')
+  getPublicConfig() {
+    const config = this.configService.getConfig();
+    return { platform_name: config.platform_name };
   }
 
   @Put()
