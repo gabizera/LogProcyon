@@ -108,7 +108,7 @@ export function VolumeLineChart({ data, xKey, yKey, height = 260, color = PALETT
 
 // ── Bar Chart (rankings/comparisons) ─────────────────────────────────────────
 
-interface BarChartProps extends ChartProps { xKey: string; yKey: string; color?: string; }
+interface BarChartProps extends ChartProps { xKey: string; yKey: string; color?: string; onBarClick?: (value: string) => void; }
 
 function TruncatedTick({ x, y, payload }: { x: number; y: number; payload: { value: string } }) {
   const label = String(payload.value);
@@ -124,10 +124,19 @@ function TruncatedTick({ x, y, payload }: { x: number; y: number; payload: { val
   );
 }
 
-export function TopBarChart({ data, xKey, yKey, height = 280, color = PALETTE.primary }: BarChartProps) {
+export function TopBarChart({ data, xKey, yKey, height = 280, color = PALETTE.primary, onBarClick }: BarChartProps) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <ReBarChart data={data} margin={{ top: 8, right: 12, bottom: 8, left: -8 }} barCategoryGap="20%">
+      <ReBarChart
+        data={data}
+        margin={{ top: 8, right: 12, bottom: 8, left: -8 }}
+        barCategoryGap="20%"
+        style={onBarClick ? { cursor: 'pointer' } : undefined}
+        onClick={onBarClick ? (e: { activePayload?: { payload: Record<string, unknown> }[] }) => {
+          const value = e?.activePayload?.[0]?.payload?.[xKey];
+          if (value) onBarClick(String(value));
+        } : undefined}
+      >
         <CartesianGrid stroke={GRID_COLOR} strokeDasharray="none" vertical={false} />
         <XAxis
           dataKey={xKey}

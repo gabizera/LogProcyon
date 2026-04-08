@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Layers } from 'lucide-react';
 import { fetchLogs, type LogEntry, type LogFilters, type LogsResponse } from '../api';
 import FilterBar from '../components/FilterBar';
@@ -6,11 +7,13 @@ import LogTable from '../components/LogTable';
 import SessionView from '../components/SessionView';
 
 export default function LogSearch() {
+  const [searchParams] = useSearchParams();
   const [result, setResult] = useState<LogsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentFilters, setCurrentFilters] = useState<LogFilters>({});
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
+  const autoSearched = useRef(false);
 
   const search = useCallback(async (filters: LogFilters) => {
     setLoading(true);
@@ -26,6 +29,20 @@ export default function LogSearch() {
       setLoading(false);
     }
   }, []);
+
+  // Auto-search from URL query params (e.g. /logs?ip_publico=1.2.3.4)
+  useEffect(() => {
+    if (autoSearched.current) return;
+    const fromUrl: LogFilters = {};
+    for (const [k, v] of searchParams.entries()) {
+      (fromUrl as Record<string, string>)[k] = v;
+    }
+    if (Object.keys(fromUrl).length > 0) {
+      autoSearched.current = true;
+      setCurrentFilters(fromUrl);
+      search({ ...fromUrl, page: 1, limit: 50 });
+    }
+  }, [searchParams, search]);
 
   const handleApply  = useCallback((filters: LogFilters) => search({ ...filters, page: 1, limit: 50 }), [search]);
   const handleClear  = useCallback(() => { setResult(null); setCurrentFilters({}); setError(null); }, []);
@@ -51,7 +68,7 @@ export default function LogSearch() {
         </div>
       </div>
 
-      <FilterBar onApply={handleApply} onClear={handleClear} />
+      <FilterBar onApply={handleApply} onClear={handleClear} initial={currentFilters} />
 
       {error && (
         <div

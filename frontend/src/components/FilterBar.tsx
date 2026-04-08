@@ -5,6 +5,7 @@ import type { LogFilters } from '../api';
 interface FilterBarProps {
   onApply: (filters: LogFilters) => void;
   onClear: () => void;
+  initial?: LogFilters;
 }
 
 const inputClass = 'rounded-lg px-3 py-2 w-full text-[13px] transition-all';
@@ -20,14 +21,14 @@ const labelStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
 };
 
-export default function FilterBar({ onApply, onClear }: FilterBarProps) {
+export default function FilterBar({ onApply, onClear, initial }: FilterBarProps) {
   const [filters, setFilters] = useState<LogFilters>({
-    ip_publico: '',
-    ip_privado: '',
-    protocolo: '',
-    tipo_nat: '',
-    start_date: '',
-    end_date: '',
+    ip_publico: initial?.ip_publico ?? '',
+    ip_privado: initial?.ip_privado ?? '',
+    protocolo: initial?.protocolo ?? '',
+    tipo_nat: initial?.tipo_nat ?? '',
+    start_date: initial?.start_date ?? '',
+    end_date: initial?.end_date ?? '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {

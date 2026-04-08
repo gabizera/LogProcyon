@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Database, CalendarDays, Globe, MonitorSmartphone, RefreshCw, BarChart3 } from 'lucide-react';
 import { fetchStats, type StatsResponse } from '../api';
 import { VolumeLineChart, TopBarChart, DistributionPieChart } from '../components/Charts';
@@ -47,6 +48,7 @@ function ChartCard({ title, subtitle, children, index }: {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [stats, setStats]         = useState<StatsResponse | null>(null);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState<string | null>(null);
@@ -141,15 +143,17 @@ export default function Dashboard() {
         <ChartCard title="Volume de Logs" subtitle="Últimas 24 horas" index={0}>
           <VolumeLineChart data={(stats?.volume_24h ?? []) as Record<string, unknown>[]} xKey="hora" yKey="total" />
         </ChartCard>
-        <ChartCard title="Top 10 IPs Públicos" subtitle="Por volume de eventos" index={1}>
-          <TopBarChart data={(stats?.top_ips_publicos ?? []) as Record<string, unknown>[]} xKey="ip" yKey="total" color="#6366f1" />
+        <ChartCard title="Top 10 IPs Públicos" subtitle="Clique para filtrar" index={1}>
+          <TopBarChart data={(stats?.top_ips_publicos ?? []) as Record<string, unknown>[]} xKey="ip" yKey="total" color="#6366f1"
+            onBarClick={ip => navigate(`/logs?ip_publico=${ip}`)} />
         </ChartCard>
       </div>
 
       {/* Row 2: Top Privados + Distribuição NAT */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <ChartCard title="Top 10 IPs Privados" subtitle="Assinantes mais ativos" index={2}>
-          <TopBarChart data={(stats?.top_ips_privados ?? []) as Record<string, unknown>[]} xKey="ip" yKey="total" color="#8b5cf6" />
+        <ChartCard title="Top 10 IPs Privados" subtitle="Clique para filtrar" index={2}>
+          <TopBarChart data={(stats?.top_ips_privados ?? []) as Record<string, unknown>[]} xKey="ip" yKey="total" color="#8b5cf6"
+            onBarClick={ip => navigate(`/logs?ip_privado=${ip}`)} />
         </ChartCard>
         <ChartCard title="Distribuição por Tipo NAT" subtitle="CGNAT · BPA · Estático" index={3}>
           <DistributionPieChart data={(stats?.distribuicao_tipo_nat ?? []) as Record<string, unknown>[]} nameKey="tipo" valueKey="total" />
@@ -161,8 +165,9 @@ export default function Dashboard() {
         <ChartCard title="Distribuição por Protocolo" subtitle="TCP · UDP" index={4}>
           <DistributionPieChart data={(stats?.distribuicao_protocolo ?? []) as Record<string, unknown>[]} nameKey="protocolo" valueKey="total" />
         </ChartCard>
-        <ChartCard title="Volume por Equipamento" subtitle="Origem dos logs" index={5}>
-          <TopBarChart data={(stats?.distribuicao_equipamento ?? []) as Record<string, unknown>[]} xKey="equipamento" yKey="total" color="#06b6d4" />
+        <ChartCard title="Volume por Equipamento" subtitle="Clique para filtrar" index={5}>
+          <TopBarChart data={(stats?.distribuicao_equipamento ?? []) as Record<string, unknown>[]} xKey="equipamento" yKey="total" color="#06b6d4"
+            onBarClick={eq => navigate(`/logs?equipamento_origem=${eq}`)} />
         </ChartCard>
       </div>
     </div>
