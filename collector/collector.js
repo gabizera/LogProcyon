@@ -106,54 +106,97 @@ function loadInputs() {
 
 // ── Socket management ─────────────────────────────────────────────────────────
 
-const sockets = new Map(); // port -> { socket, inputs: [] }
+const sockets = new Map(); // port -> { server, inputs: [] }
 
-function startListeners(inputs) {
-  // Group inputs by port
+function buildRouteMap(inputs) {
   const byPort = new Map();
   for (const inp of inputs) {
     if (!byPort.has(inp.port)) byPort.set(inp.port, []);
     byPort.get(inp.port).push(inp);
   }
+  return byPort;
+}
+
+function openSocket(port, portInputs) {
+  const server = dgram.createSocket('udp4');
+
+  server.on('error', err => console.error(`[udp:${port}] error:`, err.message));
+
+  server.on('message', (msg, rinfo) => {
+    try {
+      // Route by source IP first, then any-IP fallback
+      const entry = sockets.get(port);
+      const list  = entry ? entry.inputs : portInputs;
+      let matched = list.find(i => i.source_ip && i.source_ip === rinfo.address);
+      if (!matched) matched = list.find(i => !i.source_ip);
+      if (!matched) matched = list[0];
+
+      const parser = getParser(matched);
+      const rows = parser.parse(msg, rinfo, matched, TZ_OFFSET_MS);
+
+      if (rows.length > 0) {
+        batch.push(...rows);
+        rows.forEach(r =>
+          console.log(`[event] ${matched.name} ${r.tipo_nat} ${r.protocolo} ${r.ip_privado}:${r.porta_privada} -> ${r.ip_publico}:${r.porta_publica}`)
+        );
+        maybeBatchFlush();
+      }
+    } catch (e) {
+      console.error('[parse] error:', e.message);
+    }
+  });
+
+  server.on('listening', () => {
+    const addr  = server.address();
+    const names = portInputs.map(i => i.name).join(', ');
+    console.log(`[collector] Listening on UDP ${addr.address}:${addr.port} → [${names}]`);
+  });
+
+  server.bind(port, '0.0.0.0');
+  return server;
+}
+
+function startListeners(inputs) {
+  const byPort = buildRouteMap(inputs);
 
   for (const [port, portInputs] of byPort) {
-    if (sockets.has(port)) continue; // already listening
-
-    const server = dgram.createSocket('udp4');
-
-    server.on('error', err => console.error(`[udp:${port}] error:`, err.message));
-
-    server.on('message', (msg, rinfo) => {
-      try {
-        // Find the matching input config by source IP (if specified), else first match
-        let matched = portInputs.find(i => i.source_ip && i.source_ip === rinfo.address);
-        if (!matched) matched = portInputs.find(i => !i.source_ip);
-        if (!matched) matched = portInputs[0];
-
-        const parser = getParser(matched);
-        const rows = parser.parse(msg, rinfo, matched, TZ_OFFSET_MS);
-
-        if (rows.length > 0) {
-          batch.push(...rows);
-          rows.forEach(r =>
-            console.log(`[event] ${matched.name} ${r.tipo_nat} ${r.protocolo} ${r.ip_privado}:${r.porta_privada} -> ${r.ip_publico}:${r.porta_publica}`)
-          );
-          maybeBatchFlush();
-        }
-      } catch (e) {
-        console.error('[parse] error:', e.message);
-      }
-    });
-
-    server.on('listening', () => {
-      const addr = server.address();
-      const names = portInputs.map(i => i.name).join(', ');
-      console.log(`[collector] Listening on UDP ${addr.address}:${addr.port} → [${names}]`);
-    });
-
-    server.bind(port, '0.0.0.0');
-    sockets.set(port, { server, inputs: portInputs });
+    if (sockets.has(port)) {
+      // Port already open — just update the input list (hot-update routing)
+      sockets.get(port).inputs = portInputs;
+    } else {
+      const server = openSocket(port, portInputs);
+      sockets.set(port, { server, inputs: portInputs });
+    }
   }
+
+  // Close sockets for ports no longer in config
+  for (const [port, { server }] of sockets) {
+    if (!byPort.has(port)) {
+      console.log(`[collector] Closing UDP ${port} (removed from inputs)`);
+      server.close();
+      sockets.delete(port);
+    }
+  }
+}
+
+// ── Hot-reload: watch inputs.json for changes ─────────────────────────────────
+
+let reloadDebounce = null;
+
+function watchInputs() {
+  if (!fs.existsSync(CONFIG_FILE)) return;
+
+  fs.watch(CONFIG_FILE, () => {
+    // Debounce: editors may trigger multiple events per save
+    clearTimeout(reloadDebounce);
+    reloadDebounce = setTimeout(() => {
+      console.log('[collector] inputs.json changed — reloading...');
+      const newInputs = loadInputs();
+      startListeners(newInputs);
+    }, 500);
+  });
+
+  console.log(`[collector] Watching ${CONFIG_FILE} for changes`);
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -165,12 +208,14 @@ console.log(`[collector] Data dir: ${DATA_DIR}`);
 
 const inputs = loadInputs();
 startListeners(inputs);
+watchInputs();
 
 flushTimer = setInterval(scheduledFlush, FLUSH_INTERVAL);
 
 process.on('SIGTERM', () => {
   console.log('[collector] Shutting down...');
   clearInterval(flushTimer);
+  clearTimeout(reloadDebounce);
   scheduledFlush();
   for (const { server } of sockets.values()) server.close();
   process.exit(0);

@@ -147,7 +147,7 @@ Você deve ver linhas como:
 1. Acesse **Inputs → Novo Input**
 2. Equipamento: `A10`, Protocolo: `Syslog UDP`, Porta: `514` (ou outra)
 3. Configure o A10 para enviar syslog para `<IP-DO-SERVIDOR>:<porta>`
-4. Reinicie o collector: `docker compose restart collector`
+4. Salve — o collector aplica o novo input automaticamente
 
 ### Nokia / Hillstone / Juniper
 
@@ -231,13 +231,7 @@ Para receber logs de diferentes equipamentos no mesmo servidor:
 
 > **Como funciona a roteamento por IP de origem:** se dois inputs usam a mesma porta, o collector entrega o pacote ao input cujo **IP Origem** bate com o remetente. Se o campo IP Origem estiver vazio, o input aceita qualquer origem naquela porta.
 
-**Após salvar**, reinicie o collector para carregar as novas configurações:
-
-```bash
-docker compose restart collector
-```
-
-> O collector lê os inputs **apenas no startup**. Qualquer alteração nos Inputs requer reinício do container.
+**Após salvar**, as alterações são aplicadas automaticamente em até 1 segundo — o collector monitora o arquivo `inputs.json` via `fs.watch` e recarrega sem precisar reiniciar.
 
 ---
 
@@ -369,9 +363,10 @@ docker compose up -d --build
 ### Reiniciar um serviço específico
 
 ```bash
-docker compose restart collector   # após alterar inputs
 docker compose restart backend     # após alterar config/users
 ```
+
+> O collector recarrega `inputs.json` automaticamente — não precisa de restart ao criar/editar inputs.
 
 ---
 
@@ -424,12 +419,8 @@ sudo ss -ulnp | grep 514
 ```
 
 **Timestamp errado nos logs**
-- Ajuste `TZ_OFFSET_HOURS` no `.env` ou via **Configurações** no painel
-- Reinicie o collector: `docker compose restart collector`
-
-**Inputs não aplicados após salvar**
-- O collector lê `inputs.json` apenas no startup
-- `docker compose restart collector`
+- Ajuste via **Configurações** no painel ou edite `TZ_OFFSET_HOURS` no `.env`
+- Reinicie o collector para aplicar o TZ: `docker compose restart collector`
 
 ---
 

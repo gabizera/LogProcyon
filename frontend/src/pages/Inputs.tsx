@@ -248,8 +248,8 @@ export default function Inputs() {
       {/* Info box */}
       <div className="mt-6 rounded-xl p-4" style={{ background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.1)' }}>
         <p className="text-xs" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', lineHeight: 1.7 }}>
-          <span style={{ color: 'var(--accent-cyan)' }}>Nota:</span> Após criar ou editar um input, reinicie o container do collector para aplicar as mudanças.
-          O collector lê as configurações de inputs no startup via <code style={{ color: 'var(--text-secondary)' }}>/data/inputs.json</code>.
+          <span style={{ color: 'var(--accent-cyan)' }}>Hot-reload:</span> O collector detecta alterações automaticamente — não é necessário reiniciar.
+          Novos inputs e portas são aplicados em até 1 segundo após salvar.
           Múltiplos inputs na mesma porta são distinguidos pelo IP de origem.
         </p>
       </div>
