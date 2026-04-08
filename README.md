@@ -59,7 +59,7 @@ Cisco / A10 / Nokia / etc
 
 - **Docker** e **Docker Compose** (v2+)
 - Porta **80** disponível (frontend)
-- Porta **514/UDP** disponível (collector)
+- Portas **UDP** disponíveis para receber logs (o collector usa `network_mode: host` — veja abaixo)
 - Mínimo 2 GB RAM, 10 GB disco
 
 ---
@@ -155,6 +155,28 @@ Mesmos passos do A10. Selecione o vendor correto no campo **Equipamento** para q
 
 ---
 
+## Rede e portas UDP
+
+O collector usa `network_mode: host` no Docker — ele se comporta como um processo rodando diretamente no servidor, sem NAT ou port mapping.
+
+**O que isso significa na prática:**
+
+- Qualquer porta configurada nos **Inputs** é imediatamente acessível via UDP no IP do servidor
+- Não é necessário editar `docker-compose.yml` ao adicionar novos equipamentos/portas
+- O collector acessa o ClickHouse via `http://localhost:8123` (não pelo DNS interno do Docker)
+
+**Firewall:** libere as portas UDP que forem usar:
+
+```bash
+# Exemplo para porta 514 (padrão) e 5140 (A10)
+ufw allow 514/udp
+ufw allow 5140/udp
+```
+
+> **Mac/Linux dev:** `network_mode: host` não funciona no Docker Desktop para Mac. Por isso o `docker-compose.override.yml` coloca o collector em `profiles: ["prod"]` — no Mac, rode o collector nativamente (ver seção abaixo).
+
+---
+
 ## Desenvolvimento local (Mac/Linux)
 
 O collector usa sockets UDP que no **Docker Desktop para Mac** não funcionam corretamente. Use o modo de desenvolvimento:
@@ -193,6 +215,8 @@ Acesse: `http://localhost:5173`
 
 ## Múltiplos equipamentos / portas
 
+O collector roda com `network_mode: host`, o que significa que **qualquer porta UDP configurada nos Inputs é aberta automaticamente** — sem precisar editar o `docker-compose.yml`.
+
 Para receber logs de diferentes equipamentos no mesmo servidor:
 
 1. Acesse **Inputs** no menu lateral
@@ -205,11 +229,15 @@ Para receber logs de diferentes equipamentos no mesmo servidor:
 | Cisco BRAS 02 | cisco | netflow_v9 | 10.1.1.2 | 514 |
 | A10 CGN SP01 | a10 | syslog_udp | 10.2.1.1 | 5140 |
 
+> **Como funciona a roteamento por IP de origem:** se dois inputs usam a mesma porta, o collector entrega o pacote ao input cujo **IP Origem** bate com o remetente. Se o campo IP Origem estiver vazio, o input aceita qualquer origem naquela porta.
+
 **Após salvar**, reinicie o collector para carregar as novas configurações:
 
 ```bash
 docker compose restart collector
 ```
+
+> O collector lê os inputs **apenas no startup**. Qualquer alteração nos Inputs requer reinício do container.
 
 ---
 
