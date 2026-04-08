@@ -223,7 +223,18 @@ export class LogsService {
       ORDER BY count DESC
     `;
 
-    const [total, today, uniquePublic, uniquePrivate, volumeByHour, topPublicIps, topPrivateIps, tipoNatDist, protocoloDist] =
+    const equipamentoDistSql = `
+      SELECT
+        equipamento_origem,
+        count() AS count
+      FROM nat_logs
+      ${where}
+      GROUP BY equipamento_origem
+      ORDER BY count DESC
+      LIMIT 20
+    `;
+
+    const [total, today, uniquePublic, uniquePrivate, volumeByHour, topPublicIps, topPrivateIps, tipoNatDist, protocoloDist, equipamentoDist] =
       await Promise.all([
         this.clickhouse.query<{ total: number }>(totalSql, params),
         this.clickhouse.query<{ total: number }>(todaySql, params),
@@ -234,6 +245,7 @@ export class LogsService {
         this.clickhouse.query(topPrivateIpsSql, params),
         this.clickhouse.query(tipoNatDistSql, params),
         this.clickhouse.query(protocoloDistSql, params),
+        this.clickhouse.query(equipamentoDistSql, params),
       ]);
 
     return {
@@ -246,6 +258,7 @@ export class LogsService {
       top_private_ips: topPrivateIps,
       tipo_nat_distribution: tipoNatDist,
       protocolo_distribution: protocoloDist,
+      equipamento_distribution: equipamentoDist,
     };
   }
 }

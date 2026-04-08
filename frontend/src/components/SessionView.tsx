@@ -47,7 +47,7 @@ export default function SessionView({ log, onClose }: SessionViewProps) {
         style={{
           background: 'var(--bg-secondary)',
           border: '1px solid var(--border-medium)',
-          boxShadow: 'var(--glow-cyan)',
+          boxShadow: 'var(--shadow-card)',
         }}
         onClick={(e) => e.stopPropagation()}
       >

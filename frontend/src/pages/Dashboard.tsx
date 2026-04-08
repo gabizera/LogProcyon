@@ -1,96 +1,55 @@
 import { useState, useEffect, useCallback } from 'react';
-import {
-  Database,
-  CalendarDays,
-  Globe,
-  MonitorSmartphone,
-  RefreshCw,
-} from 'lucide-react';
+import { Database, CalendarDays, Globe, MonitorSmartphone, RefreshCw, TrendingUp } from 'lucide-react';
 import { fetchStats, type StatsResponse } from '../api';
 import { VolumeLineChart, TopBarChart, DistributionPieChart } from '../components/Charts';
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-  index,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-  color: string;
-  index: number;
+function StatCard({ icon: Icon, label, value, color, index }: {
+  icon: React.ElementType; label: string; value: string | number; color: string; index: number;
 }) {
   return (
     <div
-      className="animate-card rounded-xl p-5"
-      style={{
-        background: 'var(--bg-secondary)',
-        border: '1px solid var(--border-subtle)',
-        animationDelay: `${index * 0.05}s`,
-      }}
+      className="animate-card rounded-xl p-5 flex flex-col gap-4"
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderTop: `2px solid ${color}`, animationDelay: `${index * 0.06}s`, boxShadow: 'var(--shadow-card)' }}
     >
-      <div className="flex items-center gap-3 mb-3">
-        <div
-          className="flex items-center justify-center w-9 h-9 rounded-lg"
-          style={{
-            background: color + '15',
-            border: `1px solid ${color}30`,
-          }}
-        >
-          <Icon size={18} style={{ color }} />
-        </div>
-        <span
-          className="text-[11px] font-medium uppercase tracking-wider"
-          style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
-        >
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
           {label}
         </span>
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: color + '14' }}>
+          <Icon size={14} style={{ color }} />
+        </div>
       </div>
-      <span
-        className="text-2xl font-bold"
-        style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}
-      >
+      <div className="text-2xl font-bold tabular-nums" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
         {typeof value === 'number' ? value.toLocaleString('pt-BR') : value}
-      </span>
+      </div>
     </div>
   );
 }
 
-function ChartCard({
-  title,
-  children,
-  index,
-}: {
-  title: string;
-  children: React.ReactNode;
-  index: number;
+function ChartCard({ title, subtitle, children, index }: {
+  title: string; subtitle?: string; children: React.ReactNode; index: number;
 }) {
   return (
     <div
       className="animate-card rounded-xl p-5"
-      style={{
-        background: 'var(--bg-secondary)',
-        border: '1px solid var(--border-subtle)',
-        animationDelay: `${(index + 4) * 0.05}s`,
-      }}
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-card)', animationDelay: `${(index + 4) * 0.06}s` }}
     >
-      <h3
-        className="text-xs font-semibold uppercase tracking-wider mb-4"
-        style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
-      >
-        {title}
-      </h3>
+      <div className="flex items-center gap-2 mb-5">
+        <TrendingUp size={13} style={{ color: 'var(--accent-cyan)', flexShrink: 0 }} />
+        <div>
+          <h3 className="text-[12px] font-semibold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>{title}</h3>
+          {subtitle && <div className="text-[10px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{subtitle}</div>}
+        </div>
+      </div>
       {children}
     </div>
   );
 }
 
 export default function Dashboard() {
-  const [stats, setStats] = useState<StatsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats]         = useState<StatsResponse | null>(null);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   const loadStats = useCallback(async () => {
@@ -100,7 +59,7 @@ export default function Dashboard() {
       setError(null);
       setLastUpdate(new Date());
     } catch (err) {
-      setError('Erro ao carregar estatisticas. Verifique a conexao com o backend.');
+      setError('Erro ao carregar estatísticas.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -109,24 +68,16 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadStats();
-    const interval = setInterval(loadStats, 30000);
-    return () => clearInterval(interval);
+    const id = setInterval(loadStats, 30000);
+    return () => clearInterval(id);
   }, [loadStats]);
 
   if (loading && !stats) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="flex flex-col items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
-            style={{ borderColor: 'var(--accent-cyan)', borderTopColor: 'transparent' }}
-          />
-          <span
-            className="text-sm"
-            style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
-          >
-            Carregando dashboard...
-          </span>
+          <div className="w-9 h-9 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--accent-cyan)', borderTopColor: 'transparent' }} />
+          <span className="text-xs" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Carregando dashboard...</span>
         </div>
       </div>
     );
@@ -135,25 +86,9 @@ export default function Dashboard() {
   if (error && !stats) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div
-          className="rounded-xl p-8 max-w-md text-center"
-          style={{
-            background: 'var(--bg-secondary)',
-            border: '1px solid var(--accent-red)30',
-          }}
-        >
-          <p className="text-sm mb-4" style={{ color: 'var(--accent-red)' }}>
-            {error}
-          </p>
-          <button
-            onClick={loadStats}
-            className="px-4 py-2 rounded-lg text-sm font-medium cursor-pointer"
-            style={{
-              background: 'var(--bg-tertiary)',
-              color: 'var(--text-secondary)',
-              border: '1px solid var(--border-subtle)',
-            }}
-          >
+        <div className="rounded-xl p-8 max-w-sm text-center" style={{ background: 'var(--bg-card)', border: '1px solid rgba(239,68,68,0.2)' }}>
+          <p className="text-sm mb-4" style={{ color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>{error}</p>
+          <button onClick={loadStats} className="px-4 py-2 rounded-lg text-xs font-medium cursor-pointer hover:brightness-110" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-medium)', fontFamily: 'var(--font-display)' }}>
             Tentar novamente
           </button>
         </div>
@@ -162,122 +97,72 @@ export default function Dashboard() {
   }
 
   const statCards = [
-    {
-      icon: Database,
-      label: 'Total de Logs',
-      value: stats?.total_logs ?? 0,
-      color: '#00d4ff',
-    },
-    {
-      icon: CalendarDays,
-      label: 'Logs Hoje',
-      value: stats?.logs_hoje ?? 0,
-      color: '#22c55e',
-    },
-    {
-      icon: Globe,
-      label: 'IPs Publicos Unicos',
-      value: stats?.ips_publicos_unicos ?? 0,
-      color: '#3b82f6',
-    },
-    {
-      icon: MonitorSmartphone,
-      label: 'IPs Privados Unicos',
-      value: stats?.ips_privados_unicos ?? 0,
-      color: '#a855f7',
-    },
+    { icon: Database,          label: 'Total de Logs',       value: stats?.total_logs          ?? 0, color: 'var(--accent-cyan)'   },
+    { icon: CalendarDays,      label: 'Logs Hoje',           value: stats?.logs_hoje           ?? 0, color: 'var(--accent-green)'  },
+    { icon: Globe,             label: 'IPs Públicos Únicos', value: stats?.ips_publicos_unicos ?? 0, color: 'var(--accent-blue)'   },
+    { icon: MonitorSmartphone, label: 'IPs Privados Únicos', value: stats?.ips_privados_unicos ?? 0, color: 'var(--accent-purple)' },
   ];
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-7xl">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2
-            className="text-xl font-bold"
-            style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
-          >
-            Dashboard
-          </h2>
+          <h2 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Dashboard</h2>
           {lastUpdate && (
-            <span
-              className="text-[11px]"
-              style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
-            >
-              Atualizado: {lastUpdate.toLocaleTimeString('pt-BR')} &middot;
-              auto-refresh 30s
+            <span className="text-[10px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+              Atualizado {lastUpdate.toLocaleTimeString('pt-BR')} · auto-refresh 30s
             </span>
           )}
         </div>
         <button
           onClick={loadStats}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer hover:brightness-110"
-          style={{
-            background: 'var(--bg-tertiary)',
-            color: 'var(--text-secondary)',
-            border: '1px solid var(--border-subtle)',
-            fontFamily: 'var(--font-mono)',
-          }}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer hover:brightness-110"
+          style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)' }}
         >
-          <RefreshCw size={14} />
+          <RefreshCw size={12} />
           Atualizar
         </button>
       </div>
 
       {error && (
-        <div
-          className="mb-4 px-4 py-2 rounded-lg text-xs"
-          style={{
-            background: 'rgba(239,68,68,0.1)',
-            border: '1px solid rgba(239,68,68,0.2)',
-            color: 'var(--accent-red)',
-            fontFamily: 'var(--font-mono)',
-          }}
-        >
+        <div className="mb-5 px-4 py-2.5 rounded-lg text-xs" style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>
           {error}
         </div>
       )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {statCards.map((card, i) => (
-          <StatCard key={card.label} {...card} index={i} />
-        ))}
+        {statCards.map((card, i) => <StatCard key={card.label} {...card} index={i} />)}
       </div>
 
-      {/* Charts row 1 */}
+      {/* Row 1: Volume + Top Públicos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <ChartCard title="Volume de Logs - Ultimas 24h" index={0}>
-          <VolumeLineChart
-            data={(stats?.volume_24h ?? []) as Record<string, unknown>[]}
-            xKey="hora"
-            yKey="total"
-          />
+        <ChartCard title="Volume de Logs" subtitle="Últimas 24 horas" index={0}>
+          <VolumeLineChart data={(stats?.volume_24h ?? []) as Record<string, unknown>[]} xKey="hora" yKey="total" />
         </ChartCard>
-        <ChartCard title="Top 10 IPs Publicos" index={1}>
-          <TopBarChart
-            data={(stats?.top_ips_publicos ?? []) as Record<string, unknown>[]}
-            xKey="ip"
-            yKey="total"
-          />
+        <ChartCard title="Top 10 IPs Públicos" subtitle="Por volume de eventos" index={1}>
+          <TopBarChart data={(stats?.top_ips_publicos ?? []) as Record<string, unknown>[]} xKey="ip" yKey="total" />
         </ChartCard>
       </div>
 
-      {/* Charts row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChartCard title="Distribuicao por Tipo NAT" index={2}>
-          <DistributionPieChart
-            data={(stats?.distribuicao_tipo_nat ?? []) as Record<string, unknown>[]}
-            nameKey="tipo"
-            valueKey="total"
-          />
+      {/* Row 2: Top Privados + Distribuição NAT */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <ChartCard title="Top 10 IPs Privados" subtitle="Assinantes mais ativos" index={2}>
+          <TopBarChart data={(stats?.top_ips_privados ?? []) as Record<string, unknown>[]} xKey="ip" yKey="total" />
         </ChartCard>
-        <ChartCard title="Distribuicao por Protocolo" index={3}>
-          <DistributionPieChart
-            data={(stats?.distribuicao_protocolo ?? []) as Record<string, unknown>[]}
-            nameKey="protocolo"
-            valueKey="total"
-          />
+        <ChartCard title="Distribuição por Tipo NAT" subtitle="CGNAT · BPA · Estático" index={3}>
+          <DistributionPieChart data={(stats?.distribuicao_tipo_nat ?? []) as Record<string, unknown>[]} nameKey="tipo" valueKey="total" />
+        </ChartCard>
+      </div>
+
+      {/* Row 3: Protocolo + Equipamento */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ChartCard title="Distribuição por Protocolo" subtitle="TCP · UDP" index={4}>
+          <DistributionPieChart data={(stats?.distribuicao_protocolo ?? []) as Record<string, unknown>[]} nameKey="protocolo" valueKey="total" />
+        </ChartCard>
+        <ChartCard title="Volume por Equipamento" subtitle="Origem dos logs" index={5}>
+          <TopBarChart data={(stats?.distribuicao_equipamento ?? []) as Record<string, unknown>[]} xKey="equipamento" yKey="total" />
         </ChartCard>
       </div>
     </div>

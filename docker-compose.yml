@@ -37,6 +37,9 @@ services:
       - BATCH_SIZE=100
       - FLUSH_INTERVAL=2000
       - TZ_OFFSET_HOURS=${TZ_OFFSET_HOURS:--3}
+      - DATA_DIR=/data
+    volumes:
+      - logdata:/data
     networks:
       - lognet
     restart: unless-stopped
@@ -50,7 +53,9 @@ services:
         condition: service_healthy
     environment:
       - CLICKHOUSE_URL=http://clickhouse:8123
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DATA_DIR=/data
+    volumes:
+      - logdata:/data
     networks:
       - lognet
     restart: unless-stopped
@@ -69,6 +74,8 @@ services:
 
 volumes:
   clickhouse_data:
+    driver: local
+  logdata:
     driver: local
 
 networks:

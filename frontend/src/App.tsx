@@ -2,155 +2,133 @@ import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Search,
-  BotMessageSquare,
-  Radio,
-  ChevronRight,
   Shield,
+  Radio,
+  Users,
+  Settings,
+  Wifi,
+  Activity,
 } from 'lucide-react';
-import Dashboard from './pages/Dashboard';
-import LogSearch from './pages/LogSearch';
-import AiAnalysis from './pages/AiAnalysis';
+import Dashboard     from './pages/Dashboard';
+import LogSearch     from './pages/LogSearch';
 import JudicialSearch from './pages/JudicialSearch';
+import Inputs        from './pages/Inputs';
+import UsersPage     from './pages/Users';
+import SettingsPage  from './pages/Settings';
 
-const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/logs', icon: Search, label: 'Busca de Logs' },
-  { to: '/judicial', icon: Shield, label: 'Consulta Judicial' },
-  { to: '/ai', icon: BotMessageSquare, label: 'Análise IA' },
+const monitoringNav = [
+  { to: '/',         icon: LayoutDashboard, label: 'Dashboard'         },
+  { to: '/logs',     icon: Search,          label: 'Busca de Logs'     },
+  { to: '/judicial', icon: Shield,          label: 'Consulta Judicial' },
 ];
 
-export default function App() {
+const systemNav = [
+  { to: '/inputs',   icon: Radio,           label: 'Inputs'            },
+  { to: '/users',    icon: Users,           label: 'Usuários'          },
+  { to: '/settings', icon: Settings,        label: 'Configurações'     },
+];
+
+function NavSection({ title, items }: { title: string; items: typeof monitoringNav }) {
   const location = useLocation();
-
   return (
-    <div className="flex h-screen overflow-hidden">
-      <div className="scanline-overlay" />
-
-      {/* Sidebar */}
-      <aside
-        className="flex flex-col w-64 shrink-0 border-r"
-        style={{
-          background: 'var(--bg-secondary)',
-          borderColor: 'var(--border-subtle)',
-        }}
+    <div>
+      <div
+        className="px-3 pb-1.5 text-[9px] font-semibold uppercase tracking-widest"
+        style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-dim)' }}
       >
-        {/* Logo */}
+        {title}
+      </div>
+      {items.map(({ to, icon: Icon, label }) => {
+        const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
+        return (
+          <NavLink
+            key={to}
+            to={to}
+            className={`nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-colors ${isActive ? 'active' : ''}`}
+            style={{
+              color: isActive ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
+            <Icon size={16} style={{ flexShrink: 0 }} />
+            <span>{label}</span>
+          </NavLink>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
+      {/* ── Sidebar ─────────────────────────────────────────── */}
+      <aside
+        className="flex flex-col shrink-0 border-r"
+        style={{ width: 'var(--sidebar-w)', background: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}
+      >
+        {/* Brand */}
         <div
-          className="flex items-center gap-3 px-5 py-5 border-b"
+          className="flex items-center gap-3 px-4 py-4 border-b"
           style={{ borderColor: 'var(--border-subtle)' }}
         >
           <div
-            className="flex items-center justify-center w-9 h-9 rounded-lg"
+            className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0"
             style={{
-              background: 'linear-gradient(135deg, #00d4ff20, #3b82f620)',
-              border: '1px solid var(--border-medium)',
+              background: 'linear-gradient(135deg, rgba(0,212,255,0.15), rgba(99,102,241,0.15))',
+              border: '1px solid rgba(0,212,255,0.2)',
             }}
           >
-            <Radio size={18} style={{ color: 'var(--accent-cyan)' }} />
+            <Wifi size={15} style={{ color: 'var(--accent-cyan)' }} />
           </div>
-          <div>
-            <h1
-              className="text-sm font-bold tracking-wide"
-              style={{
-                fontFamily: 'var(--font-display)',
-                color: 'var(--text-primary)',
-              }}
-            >
-              LogPlatform
-            </h1>
-            <span
-              className="text-[10px] font-medium tracking-widest uppercase"
-              style={{
-                fontFamily: 'var(--font-mono)',
-                color: 'var(--text-muted)',
-              }}
-            >
-              NAT / CGNAT / BPA
-            </span>
+          <div className="min-w-0">
+            <div className="text-sm font-bold tracking-tight truncate" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+              LogProcyon
+            </div>
+            <div className="text-[9px] font-medium tracking-widest uppercase truncate" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+              NAT · CGNAT · BPA
+            </div>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex flex-col gap-1 p-3 mt-2">
-          {navItems.map(({ to, icon: Icon, label }) => {
-            const isActive =
-              to === '/'
-                ? location.pathname === '/'
-                : location.pathname.startsWith(to);
-            return (
-              <NavLink
-                key={to}
-                to={to}
-                className={`nav-link flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive ? 'active' : ''
-                }`}
-                style={{
-                  color: isActive
-                    ? 'var(--accent-cyan)'
-                    : 'var(--text-secondary)',
-                  fontFamily: 'var(--font-display)',
-                }}
-              >
-                <Icon size={18} />
-                <span className="flex-1">{label}</span>
-                {isActive && (
-                  <ChevronRight
-                    size={14}
-                    style={{ color: 'var(--accent-cyan)' }}
-                  />
-                )}
-              </NavLink>
-            );
-          })}
+        <nav className="flex-1 flex flex-col gap-3 p-2 pt-3 overflow-y-auto">
+          <NavSection title="Monitoramento" items={monitoringNav} />
+          <NavSection title="Sistema"       items={systemNav} />
         </nav>
 
         {/* Status footer */}
-        <div className="mt-auto p-4">
+        <div className="p-3 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
           <div
-            className="rounded-lg px-4 py-3"
-            style={{
-              background: 'var(--bg-tertiary)',
-              border: '1px solid var(--border-subtle)',
-            }}
+            className="rounded-xl px-3 py-2.5 mb-2"
+            style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.12)' }}
           >
-            <div className="flex items-center gap-2 mb-1">
-              <div
-                className="w-2 h-2 rounded-full live-indicator"
-                style={{ background: 'var(--accent-green)' }}
-              />
-              <span
-                className="text-xs font-medium"
-                style={{
-                  color: 'var(--accent-green)',
-                  fontFamily: 'var(--font-mono)',
-                }}
-              >
+            <div className="flex items-center gap-2">
+              <div className="live-dot w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--accent-green)' }} />
+              <span className="text-[11px] font-semibold" style={{ color: 'var(--accent-green)', fontFamily: 'var(--font-mono)' }}>
                 SISTEMA ATIVO
               </span>
             </div>
-            <span
-              className="text-[10px]"
-              style={{
-                color: 'var(--text-muted)',
-                fontFamily: 'var(--font-mono)',
-              }}
-            >
-              Coletando logs em tempo real
-            </span>
+            <div className="mt-1 text-[10px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+              Coletando em tempo real
+            </div>
+          </div>
+          <div className="px-1 flex items-center justify-between">
+            <Activity size={11} style={{ color: 'var(--text-dim)' }} />
+            <span className="text-[9px]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-dim)' }}>v1.1.0</span>
           </div>
         </div>
       </aside>
 
-      {/* Main content */}
-      <main
-        className="flex-1 overflow-y-auto"
-        style={{ background: 'var(--bg-primary)' }}
-      >
+      {/* ── Main ────────────────────────────────────────────── */}
+      <main className="flex-1 overflow-y-auto" style={{ background: 'var(--bg-primary)' }}>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/logs" element={<LogSearch />} />
-          <Route path="/judicial" element={<JudicialSearch />} />
-          <Route path="/ai" element={<AiAnalysis />} />
+          <Route path="/"          element={<Dashboard />} />
+          <Route path="/logs"      element={<LogSearch />} />
+          <Route path="/judicial"  element={<JudicialSearch />} />
+          <Route path="/inputs"    element={<Inputs />} />
+          <Route path="/users"     element={<UsersPage />} />
+          <Route path="/settings"  element={<SettingsPage />} />
         </Routes>
       </main>
     </div>

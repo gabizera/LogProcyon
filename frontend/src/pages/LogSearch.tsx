@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Layers } from 'lucide-react';
 import { fetchLogs, type LogEntry, type LogFilters, type LogsResponse } from '../api';
 import FilterBar from '../components/FilterBar';
 import LogTable from '../components/LogTable';
@@ -20,199 +20,126 @@ export default function LogSearch() {
       setResult(data);
       setCurrentFilters(filters);
     } catch (err) {
-      setError('Erro ao buscar logs. Verifique a conexao com o backend.');
+      setError('Erro ao buscar logs. Verifique a conexão com o backend.');
       console.error(err);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const handleApply = useCallback(
-    (filters: LogFilters) => {
-      search({ ...filters, page: 1, limit: 50 });
-    },
-    [search],
-  );
-
-  const handleClear = useCallback(() => {
-    setResult(null);
-    setCurrentFilters({});
-    setError(null);
-  }, []);
-
-  const goToPage = useCallback(
-    (page: number) => {
-      search({ ...currentFilters, page, limit: 50 });
-    },
-    [search, currentFilters],
-  );
+  const handleApply  = useCallback((filters: LogFilters) => search({ ...filters, page: 1, limit: 50 }), [search]);
+  const handleClear  = useCallback(() => { setResult(null); setCurrentFilters({}); setError(null); }, []);
+  const goToPage     = useCallback((page: number) => search({ ...currentFilters, page, limit: 50 }), [search, currentFilters]);
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-full">
       {/* Header */}
-      <div className="mb-6">
-        <h2
-          className="text-xl font-bold"
-          style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+      <div className="flex items-center gap-3 mb-5">
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.15)' }}
         >
-          Busca de Logs
-        </h2>
-        <span
-          className="text-[11px]"
-          style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
-        >
-          Filtre e pesquise registros NAT/CGNAT/BPA
-        </span>
+          <Layers size={15} style={{ color: 'var(--accent-cyan)' }} />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+            Busca de Logs
+          </h2>
+          <span className="text-[10px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            Filtre e pesquise registros NAT/CGNAT/BPA
+          </span>
+        </div>
       </div>
 
-      {/* Filters */}
       <FilterBar onApply={handleApply} onClear={handleClear} />
 
-      {/* Error */}
       {error && (
         <div
-          className="mb-4 px-4 py-2 rounded-lg text-xs"
-          style={{
-            background: 'rgba(239,68,68,0.1)',
-            border: '1px solid rgba(239,68,68,0.2)',
-            color: 'var(--accent-red)',
-            fontFamily: 'var(--font-mono)',
-          }}
+          className="mb-4 px-4 py-2.5 rounded-lg text-xs"
+          style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}
         >
           {error}
         </div>
       )}
 
-      {/* Results info */}
       {result && (
-        <div className="flex items-center justify-between mb-3">
-          <span
-            className="text-xs"
-            style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
-          >
-            {result.total.toLocaleString('pt-BR')} registros encontrados
-            {result.totalPages > 1 &&
-              ` — Pagina ${result.page} de ${result.totalPages}`}
+        <div className="flex items-center mb-3">
+          <span className="text-[11px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            <span style={{ color: 'var(--accent-cyan)' }}>{result.total.toLocaleString('pt-BR')}</span>
+            {' '}registros
+            {result.totalPages > 1 && ` · página ${result.page} de ${result.totalPages}`}
           </span>
         </div>
       )}
 
-      {/* Table */}
       {(result || loading) && (
-        <LogTable
-          logs={result?.data ?? []}
-          loading={loading}
-          onRowClick={setSelectedLog}
-        />
+        <LogTable logs={result?.data ?? []} loading={loading} onRowClick={setSelectedLog} />
       )}
 
-      {/* Prompt to search */}
       {!result && !loading && (
         <div
-          className="rounded-xl p-16 flex items-center justify-center"
-          style={{
-            background: 'var(--bg-secondary)',
-            border: '1px solid var(--border-subtle)',
-          }}
+          className="rounded-xl p-16 flex flex-col items-center justify-center gap-2"
+          style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}
         >
-          <div className="text-center">
-            <p
-              className="text-sm mb-1"
-              style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-display)' }}
-            >
-              Use os filtros acima para buscar logs
-            </p>
-            <p
-              className="text-xs"
-              style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
-            >
-              Preencha os campos desejados e clique em &quot;Buscar&quot;
-            </p>
-          </div>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-display)' }}>
+            Use os filtros acima para buscar logs
+          </p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            Preencha os campos desejados e clique em "Buscar"
+          </p>
         </div>
       )}
 
       {/* Pagination */}
       {result && result.totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-4">
-          <button
-            onClick={() => goToPage(result.page - 1)}
-            disabled={result.page <= 1}
-            className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-            style={{
-              background: 'var(--bg-tertiary)',
-              color: 'var(--text-secondary)',
-              border: '1px solid var(--border-subtle)',
-              fontFamily: 'var(--font-mono)',
-            }}
-          >
-            <ChevronLeft size={14} />
-            Anterior
-          </button>
-
+        <div className="flex items-center justify-center gap-1.5 mt-5">
+          <PagBtn onClick={() => goToPage(result.page - 1)} disabled={result.page <= 1} label="← Anterior" />
           {generatePageNumbers(result.page, result.totalPages).map((p, i) =>
-            p === -1 ? (
-              <span
-                key={`ellipsis-${i}`}
-                className="px-2 text-xs"
-                style={{ color: 'var(--text-muted)' }}
-              >
-                ...
-              </span>
-            ) : (
-              <button
-                key={p}
-                onClick={() => goToPage(p)}
-                className="w-8 h-8 rounded-lg text-xs font-medium transition-colors cursor-pointer"
-                style={{
-                  background:
-                    p === result.page
-                      ? 'linear-gradient(135deg, #00d4ff, #3b82f6)'
-                      : 'var(--bg-tertiary)',
-                  color: p === result.page ? '#0a0e14' : 'var(--text-secondary)',
-                  border: `1px solid ${
-                    p === result.page ? 'transparent' : 'var(--border-subtle)'
-                  }`,
-                  fontFamily: 'var(--font-mono)',
-                }}
-              >
-                {p}
-              </button>
-            ),
+            p === -1
+              ? <span key={`e${i}`} className="px-2 text-xs" style={{ color: 'var(--text-dim)' }}>···</span>
+              : (
+                <button
+                  key={p}
+                  onClick={() => goToPage(p)}
+                  className="w-8 h-8 rounded-lg text-xs font-medium cursor-pointer transition-all"
+                  style={{
+                    background: p === result.page ? 'var(--accent-cyan)' : 'var(--bg-tertiary)',
+                    color:      p === result.page ? '#020617'            : 'var(--text-secondary)',
+                    border:     p === result.page ? 'none'               : '1px solid var(--border-subtle)',
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                >
+                  {p}
+                </button>
+              )
           )}
-
-          <button
-            onClick={() => goToPage(result.page + 1)}
-            disabled={result.page >= result.totalPages}
-            className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-            style={{
-              background: 'var(--bg-tertiary)',
-              color: 'var(--text-secondary)',
-              border: '1px solid var(--border-subtle)',
-              fontFamily: 'var(--font-mono)',
-            }}
-          >
-            Proximo
-            <ChevronRight size={14} />
-          </button>
+          <PagBtn onClick={() => goToPage(result.page + 1)} disabled={result.page >= result.totalPages} label="Próximo →" />
         </div>
       )}
 
-      {/* Session detail modal */}
       <SessionView log={selectedLog} onClose={() => setSelectedLog(null)} />
     </div>
   );
 }
 
+function PagBtn({ onClick, disabled, label }: { onClick: () => void; disabled: boolean; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:brightness-110"
+      style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)' }}
+    >
+      {label}
+    </button>
+  );
+}
+
 function generatePageNumbers(current: number, total: number): number[] {
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, i) => i + 1);
-  }
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
   const pages: number[] = [1];
   if (current > 3) pages.push(-1);
-  const start = Math.max(2, current - 1);
-  const end = Math.min(total - 1, current + 1);
-  for (let i = start; i <= end; i++) pages.push(i);
+  for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) pages.push(i);
   if (current < total - 2) pages.push(-1);
   pages.push(total);
   return pages;

@@ -7,12 +7,17 @@ interface FilterBarProps {
   onClear: () => void;
 }
 
+const inputClass = 'rounded-lg px-3 py-2 w-full text-[13px] transition-all';
 const inputStyle: React.CSSProperties = {
   background: 'var(--bg-tertiary)',
   border: '1px solid var(--border-subtle)',
   color: 'var(--text-primary)',
   fontFamily: 'var(--font-mono)',
-  fontSize: 13,
+};
+
+const labelStyle: React.CSSProperties = {
+  color: 'var(--text-muted)',
+  fontFamily: 'var(--font-mono)',
 };
 
 export default function FilterBar({ onApply, onClear }: FilterBarProps) {
@@ -25,10 +30,8 @@ export default function FilterBar({ onApply, onClear }: FilterBarProps) {
     end_date: '',
   });
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => {
-    setFilters((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleApply = (e: React.FormEvent) => {
@@ -37,14 +40,8 @@ export default function FilterBar({ onApply, onClear }: FilterBarProps) {
   };
 
   const handleClear = () => {
-    setFilters({
-      ip_publico: '',
-      ip_privado: '',
-      protocolo: '',
-      tipo_nat: '',
-      start_date: '',
-      end_date: '',
-    });
+    const empty = { ip_publico: '', ip_privado: '', protocolo: '', tipo_nat: '', start_date: '', end_date: '' };
+    setFilters(empty);
     onClear();
   };
 
@@ -52,60 +49,30 @@ export default function FilterBar({ onApply, onClear }: FilterBarProps) {
     <form
       onSubmit={handleApply}
       className="rounded-xl p-4 mb-4"
-      style={{
-        background: 'var(--bg-secondary)',
-        border: '1px solid var(--border-subtle)',
-      }}
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-        <div className="flex flex-col gap-1">
-          <label
-            className="text-[11px] font-medium uppercase tracking-wider"
-            style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
-          >
-            IP Publico
-          </label>
-          <input
-            name="ip_publico"
-            value={filters.ip_publico}
-            onChange={handleChange}
-            placeholder="ex: 203.0.113.1"
-            className="rounded-lg px-3 py-2"
-            style={inputStyle}
-          />
-        </div>
+        {[
+          { name: 'ip_publico',  label: 'IP Público',   placeholder: '203.0.113.1', type: 'text'           },
+          { name: 'ip_privado',  label: 'IP Privado',   placeholder: '10.0.0.1',    type: 'text'           },
+        ].map(f => (
+          <div key={f.name} className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-semibold uppercase tracking-wider" style={labelStyle}>{f.label}</label>
+            <input
+              name={f.name}
+              value={(filters as Record<string, string>)[f.name]}
+              onChange={handleChange}
+              placeholder={f.placeholder}
+              type={f.type}
+              className={inputClass}
+              style={inputStyle}
+            />
+          </div>
+        ))}
 
-        <div className="flex flex-col gap-1">
-          <label
-            className="text-[11px] font-medium uppercase tracking-wider"
-            style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
-          >
-            IP Privado
-          </label>
-          <input
-            name="ip_privado"
-            value={filters.ip_privado}
-            onChange={handleChange}
-            placeholder="ex: 10.0.0.1"
-            className="rounded-lg px-3 py-2"
-            style={inputStyle}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label
-            className="text-[11px] font-medium uppercase tracking-wider"
-            style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
-          >
-            Protocolo
-          </label>
-          <select
-            name="protocolo"
-            value={filters.protocolo}
-            onChange={handleChange}
-            className="rounded-lg px-3 py-2"
-            style={inputStyle}
-          >
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-semibold uppercase tracking-wider" style={labelStyle}>Protocolo</label>
+          <select name="protocolo" value={filters.protocolo} onChange={handleChange} className={inputClass} style={inputStyle}>
             <option value="">Todos</option>
             <option value="TCP">TCP</option>
             <option value="UDP">UDP</option>
@@ -113,60 +80,32 @@ export default function FilterBar({ onApply, onClear }: FilterBarProps) {
           </select>
         </div>
 
-        <div className="flex flex-col gap-1">
-          <label
-            className="text-[11px] font-medium uppercase tracking-wider"
-            style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
-          >
-            Tipo NAT
-          </label>
-          <select
-            name="tipo_nat"
-            value={filters.tipo_nat}
-            onChange={handleChange}
-            className="rounded-lg px-3 py-2"
-            style={inputStyle}
-          >
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-semibold uppercase tracking-wider" style={labelStyle}>Tipo NAT</label>
+          <select name="tipo_nat" value={filters.tipo_nat} onChange={handleChange} className={inputClass} style={inputStyle}>
             <option value="">Todos</option>
-            <option value="estatico">Estatico</option>
-            <option value="CGNAT">CGNAT</option>
-            <option value="BPA">BPA</option>
+            <option value="estatico">Estático</option>
+            <option value="cgnat">CGNAT</option>
+            <option value="bpa">BPA</option>
           </select>
         </div>
 
-        <div className="flex flex-col gap-1">
-          <label
-            className="text-[11px] font-medium uppercase tracking-wider"
-            style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
-          >
-            Data Inicio
-          </label>
-          <input
-            name="start_date"
-            type="datetime-local"
-            value={filters.start_date}
-            onChange={handleChange}
-            className="rounded-lg px-3 py-2"
-            style={inputStyle}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label
-            className="text-[11px] font-medium uppercase tracking-wider"
-            style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
-          >
-            Data Fim
-          </label>
-          <input
-            name="end_date"
-            type="datetime-local"
-            value={filters.end_date}
-            onChange={handleChange}
-            className="rounded-lg px-3 py-2"
-            style={inputStyle}
-          />
-        </div>
+        {[
+          { name: 'start_date', label: 'Data Início' },
+          { name: 'end_date',   label: 'Data Fim'    },
+        ].map(f => (
+          <div key={f.name} className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-semibold uppercase tracking-wider" style={labelStyle}>{f.label}</label>
+            <input
+              name={f.name}
+              type="datetime-local"
+              value={(filters as Record<string, string>)[f.name]}
+              onChange={handleChange}
+              className={inputClass}
+              style={inputStyle}
+            />
+          </div>
+        ))}
       </div>
 
       <div className="flex gap-2 mt-4">
@@ -174,18 +113,18 @@ export default function FilterBar({ onApply, onClear }: FilterBarProps) {
           type="submit"
           className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all hover:brightness-110 cursor-pointer"
           style={{
-            background: 'linear-gradient(135deg, #00d4ff, #3b82f6)',
-            color: '#0a0e14',
+            background: 'linear-gradient(135deg, var(--accent-cyan), #3b82f6)',
+            color: '#020617',
             fontFamily: 'var(--font-display)',
           }}
         >
-          <Search size={15} />
+          <Search size={14} />
           Buscar
         </button>
         <button
           type="button"
           onClick={handleClear}
-          className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all hover:brightness-110"
           style={{
             background: 'var(--bg-tertiary)',
             color: 'var(--text-secondary)',
@@ -193,7 +132,7 @@ export default function FilterBar({ onApply, onClear }: FilterBarProps) {
             fontFamily: 'var(--font-display)',
           }}
         >
-          <X size={15} />
+          <X size={14} />
           Limpar
         </button>
       </div>

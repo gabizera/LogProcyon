@@ -27,3 +27,8 @@ clickhouse/data/
 # IDE
 .vscode/
 .idea/
+
+# Runtime data (persistent config managed via Web UI — keep .gitkeep)
+data/config.json
+data/inputs.json
+data/users.json
