@@ -99,7 +99,7 @@ export class LogsService {
         equipamento_origem,
         timestamp
       FROM nat_logs
-      WHERE ip_publico = {ip_publico:IPv4}
+      WHERE ip_publico = toIPv4({ip_publico:String})
         AND porta_publica <= {porta:UInt16}
         AND (porta_publica + tamanho_bloco) > {porta:UInt16}
         AND timestamp >= {ts_inicio:DateTime64(3)}
