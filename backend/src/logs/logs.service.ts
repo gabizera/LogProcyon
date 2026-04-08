@@ -89,22 +89,22 @@ export class LogsService {
     // Para BPA: porta_publica <= porta < porta_publica + tamanho_bloco
     const sql = `
       SELECT
-        toString(ip_privado)   AS ip_privado,
-        toString(ip_publico)   AS ip_publico,
-        porta_publica,
-        tamanho_bloco,
-        porta_publica + tamanho_bloco - 1 AS porta_fim,
-        protocolo,
-        tipo_nat,
-        equipamento_origem,
-        timestamp
-      FROM nat_logs
-      WHERE ip_publico = toIPv4({ip_publico:String})
-        AND porta_publica <= {porta:UInt16}
-        AND (porta_publica + tamanho_bloco) > {porta:UInt16}
-        AND timestamp >= {ts_inicio:DateTime64(3)}
-        AND timestamp <= {ts_fim:DateTime64(3)}
-      ORDER BY timestamp DESC
+        toString(src.ip_privado)   AS ip_privado,
+        toString(src.ip_publico)   AS ip_publico,
+        src.porta_publica,
+        src.tamanho_bloco,
+        src.porta_publica + src.tamanho_bloco - 1 AS porta_fim,
+        src.protocolo,
+        src.tipo_nat,
+        src.equipamento_origem,
+        src.timestamp
+      FROM nat_logs AS src
+      WHERE src.ip_publico = {ip_publico:IPv4}
+        AND src.porta_publica <= {porta:UInt16}
+        AND (src.porta_publica + src.tamanho_bloco) > {porta:UInt16}
+        AND src.timestamp >= {ts_inicio:DateTime64(3)}
+        AND src.timestamp <= {ts_fim:DateTime64(3)}
+      ORDER BY src.timestamp DESC
       LIMIT 50
     `;
 
