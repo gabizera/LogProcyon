@@ -69,7 +69,10 @@ export class JudicialQueryDto {
   porta: number;
 
   @IsDateString()
-  timestamp: string;
+  data_inicio: string;
+
+  @IsDateString()
+  data_fim: string;
 }
 
 export class StatsQueryDto {

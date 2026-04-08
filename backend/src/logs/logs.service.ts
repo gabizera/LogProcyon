@@ -85,9 +85,8 @@ export class LogsService {
   }
 
   async judicialSearch(dto: JudicialQueryDto) {
-    // Busca o cliente que estava usando ip_publico:porta no momento exato
+    // Busca o cliente que estava usando ip_publico:porta dentro do período informado
     // Para BPA: porta_publica <= porta < porta_publica + tamanho_bloco
-    // Janela de ±5 minutos ao redor do timestamp informado para cobrir eventos de criação
     const sql = `
       SELECT
         toString(ip_privado)   AS ip_privado,
@@ -103,30 +102,28 @@ export class LogsService {
       WHERE ip_publico = {ip_publico:IPv4}
         AND porta_publica <= {porta:UInt16}
         AND (porta_publica + tamanho_bloco) > {porta:UInt16}
-        AND timestamp <= {ts_fim:DateTime64(3)}
         AND timestamp >= {ts_inicio:DateTime64(3)}
+        AND timestamp <= {ts_fim:DateTime64(3)}
       ORDER BY timestamp DESC
-      LIMIT 10
+      LIMIT 50
     `;
 
-    const tsMs  = new Date(dto.timestamp).getTime();
-    const janela = 5 * 60 * 1000; // ±5 minutos
-
-    const toClickhouseTs = (ms: number) =>
-      new Date(ms).toISOString().replace('T', ' ').replace('Z', '').slice(0, 23);
+    const toClickhouseTs = (iso: string) =>
+      new Date(iso).toISOString().replace('T', ' ').replace('Z', '').slice(0, 23);
 
     const rows = await this.clickhouse.query(sql, {
       ip_publico: dto.ip_publico,
       porta:      dto.porta,
-      ts_inicio:  toClickhouseTs(tsMs - janela),
-      ts_fim:     toClickhouseTs(tsMs + janela),
+      ts_inicio:  toClickhouseTs(dto.data_inicio),
+      ts_fim:     toClickhouseTs(dto.data_fim),
     });
 
     return {
       consulta: {
-        ip_publico: dto.ip_publico,
-        porta:      dto.porta,
-        timestamp:  dto.timestamp,
+        ip_publico:   dto.ip_publico,
+        porta:        dto.porta,
+        data_inicio:  dto.data_inicio,
+        data_fim:     dto.data_fim,
       },
       resultados: rows,
       total: rows.length,
