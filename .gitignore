@@ -1,0 +1,29 @@
+# Environment
+.env
+
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build outputs
+dist/
+*/dist/
+backend/dist/
+frontend/dist/
+
+# ClickHouse data
+clickhouse/data/
+
+# Logs
+*.log
+/tmp/
+
+# macOS
+.DS_Store
+
+# TypeScript build info
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/

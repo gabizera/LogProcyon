@@ -1,0 +1,76 @@
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: log-clickhouse
+    environment:
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    networks:
+      - lognet
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  collector:
+    build:
+      context: ./collector
+    container_name: log-collector
+    ports:
+      - "514:514/udp"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    environment:
+      - CLICKHOUSE_URL=http://clickhouse:8123
+      - LISTEN_PORT=514
+      - BATCH_SIZE=100
+      - FLUSH_INTERVAL=2000
+      - TZ_OFFSET_HOURS=${TZ_OFFSET_HOURS:--3}
+    networks:
+      - lognet
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    container_name: log-backend
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    environment:
+      - CLICKHOUSE_URL=http://clickhouse:8123
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    networks:
+      - lognet
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: log-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - lognet
+    restart: unless-stopped
+
+volumes:
+  clickhouse_data:
+    driver: local
+
+networks:
+  lognet:
+    driver: bridge
