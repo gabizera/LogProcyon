@@ -1,6 +1,9 @@
 # Environment
 .env
 
+# Dev override (Mac only — não usar em produção)
+docker-compose.override.yml
+
 # Dependencies
 node_modules/
 */node_modules/

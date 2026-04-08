@@ -1,6 +1,9 @@
 # Dev overrides for Mac (Docker UDP doesn't work on Mac for collector)
+# Copy to docker-compose.override.yml to use:
+#   cp docker-compose.override.example.yml docker-compose.override.yml
+#
 # Usage: docker compose up -d   → starts clickhouse + backend only
-#        docker compose --profile prod up -d  → starts everything including collector and frontend
+#        docker compose --profile prod up -d  → starts everything
 
 services:
   clickhouse:
@@ -13,6 +16,8 @@ services:
       - "3000:3000"
     volumes:
       - ./data:/data
+    environment:
+      - JWT_SECRET=dev-only-secret-not-for-production-1234567890
 
   collector:
     profiles: ["prod"]
