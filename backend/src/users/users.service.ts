@@ -46,7 +46,7 @@ export class UsersService implements OnModuleInit {
     try {
       const dir = path.dirname(this.filePath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(this.filePath, JSON.stringify(this.users, null, 2));
+      fs.writeFileSync(this.filePath, JSON.stringify(this.users, null, 2), { mode: 0o600 });
     } catch (e) {
       this.logger.error('Could not save users: ' + e.message);
     }
@@ -64,7 +64,7 @@ export class UsersService implements OnModuleInit {
     };
     this.users = [admin];
     this.save();
-    this.logger.log('Seeded default admin user (password: admin123)');
+    this.logger.log('Seeded default admin user');
   }
 
   private sanitize(user: User): Omit<User, 'password_hash'> {

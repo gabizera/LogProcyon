@@ -1,5 +1,6 @@
 import { Controller, Get, Put, Body } from '@nestjs/common';
 import { ConfigService } from './config.service';
+import { Roles } from '../auth/roles.decorator';
 import { IsNumber, IsOptional, IsString, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -33,6 +34,7 @@ export class ConfigController {
   }
 
   @Put()
+  @Roles('admin')
   updateConfig(@Body() dto: UpdateConfigDto) {
     return this.configService.updateConfig(dto);
   }

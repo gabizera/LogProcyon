@@ -93,13 +93,16 @@ step "Configuração de ambiente"
 if [ -f .env ]; then
   warn ".env já existe — mantendo configuração atual"
 else
-  if [ ! -f .env.example ]; then
-    cat > .env.example <<'EOF'
+  # Gerar JWT_SECRET aleatório (64 hex chars)
+  JWT_SECRET=$(openssl rand -hex 32)
+
+  cat > .env <<EOF
 # Timezone offset em horas (ex: -3 para BRT, 0 para UTC, -4 para AMT)
 TZ_OFFSET_HOURS=-3
+
+# JWT secret (gerado automaticamente na instalação — não compartilhe)
+JWT_SECRET=${JWT_SECRET}
 EOF
-  fi
-  cp .env.example .env
 
   # Perguntar timezone interativamente (se tiver terminal)
   if [ -t 0 ]; then
@@ -112,14 +115,21 @@ EOF
     echo "     0  → UTC+0  (GMT)"
     echo ""
     read -rp "  Timezone offset [-3]: " TZ_INPUT
-    TZ_INPUT="${TZ_INPUT:-3}"
-    # Garantir sinal negativo se o usuário não digitou
-    [[ "$TZ_INPUT" =~ ^[0-9]+$ ]] && TZ_INPUT="-$TZ_INPUT"
-    sed -i "s/TZ_OFFSET_HOURS=.*/TZ_OFFSET_HOURS=$TZ_INPUT/" .env
-    success "Timezone configurado: UTC$TZ_INPUT"
+    TZ_INPUT="${TZ_INPUT:--3}"
+    # Validar: aceitar apenas números com opcional sinal
+    if [[ "$TZ_INPUT" =~ ^-?[0-9]+$ ]]; then
+      sed -i "s/TZ_OFFSET_HOURS=.*/TZ_OFFSET_HOURS=$TZ_INPUT/" .env
+      success "Timezone configurado: UTC$TZ_INPUT"
+    else
+      warn "Valor inválido — usando padrão UTC-3"
+    fi
   else
     success ".env criado com timezone padrão UTC-3"
   fi
+
+  # Proteger .env (só root lê)
+  chmod 600 .env
+  success "JWT_SECRET gerado automaticamente"
 fi
 
 # ── Firewall ──────────────────────────────────────────────────
@@ -168,11 +178,16 @@ echo -e "${GREEN}${BOLD}║        LogProcyon instalado com sucesso!     ║${RE
 echo -e "${GREEN}${BOLD}╚══════════════════════════════════════════════╝${RESET}"
 echo ""
 echo -e "  ${BOLD}Acesso:${RESET}       http://${SERVER_IP}"
-echo -e "  ${BOLD}Credenciais:${RESET}  admin / admin123"
+echo -e "  ${BOLD}Login:${RESET}        admin"
+echo -e "  ${BOLD}Senha:${RESET}        admin123"
 echo -e "  ${BOLD}Diretório:${RESET}    $INSTALL_DIR"
 echo ""
-echo -e "  ${YELLOW}${BOLD}Troque a senha do admin imediatamente!${RESET}"
+echo -e "  ${RED}${BOLD}IMPORTANTE: Troque a senha do admin imediatamente!${RESET}"
 echo -e "  Acesse: Usuários → Trocar senha"
+echo ""
+echo -e "  ${BOLD}Segurança:${RESET}"
+echo "    JWT_SECRET gerado automaticamente em .env"
+echo "    Para HTTPS, configure um reverse proxy (nginx/caddy) com SSL"
 echo ""
 echo -e "  ${BOLD}Logs:${RESET}"
 echo "    docker logs log-collector -f   # pacotes recebidos"

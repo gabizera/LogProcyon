@@ -50,8 +50,8 @@ export class LogsService {
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const page = dto.page ?? 1;
-    const limit = dto.limit ?? 50;
+    const page = Math.max(dto.page ?? 1, 1);
+    const limit = Math.min(Math.max(dto.limit ?? 50, 1), 1000);
     const offset = (page - 1) * limit;
 
     const countSql = `SELECT count() AS total FROM nat_logs ${where}`;

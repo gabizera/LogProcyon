@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { LogsService } from './logs.service';
 import { SearchLogsDto, StatsQueryDto, JudicialQueryDto } from './dto/search-logs.dto';
+import { Roles } from '../auth/roles.decorator';
 
 @Controller('logs')
 export class LogsController {
@@ -17,6 +18,7 @@ export class LogsController {
   }
 
   @Get('judicial')
+  @Roles('admin', 'operator')
   judicial(@Query() dto: JudicialQueryDto) {
     return this.logsService.judicialSearch(dto);
   }
