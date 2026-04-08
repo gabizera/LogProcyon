@@ -112,6 +112,13 @@ export class UsersService implements OnModuleInit {
     return this.sanitize(this.users[idx]);
   }
 
+  async validateCredentials(username: string, password: string): Promise<Omit<User, 'password_hash'> | null> {
+    const user = this.users.find(u => u.username === username);
+    if (!user?.password_hash) return null;
+    const valid = await bcrypt.compare(password, user.password_hash);
+    return valid ? this.sanitize(user) : null;
+  }
+
   remove(id: string): void {
     const idx = this.users.findIndex(u => u.id === id);
     if (idx === -1) throw new NotFoundException(`User ${id} not found`);

@@ -53,6 +53,7 @@ services:
     environment:
       - CLICKHOUSE_URL=http://clickhouse:8123
       - DATA_DIR=/data
+      - JWT_SECRET=${JWT_SECRET:-logprocyon-change-this-secret}
     volumes:
       - logdata:/data
     networks:

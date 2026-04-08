@@ -8,7 +8,10 @@ import {
   Settings,
   Wifi,
   Activity,
+  LogOut,
 } from 'lucide-react';
+import { useAuth } from './auth';
+import LoginPage     from './pages/Login';
 import Dashboard     from './pages/Dashboard';
 import LogSearch     from './pages/LogSearch';
 import JudicialSearch from './pages/JudicialSearch';
@@ -60,6 +63,18 @@ function NavSection({ title, items }: { title: string; items: typeof monitoringN
 }
 
 export default function App() {
+  const { user, logout, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen" style={{ background: 'var(--bg-primary)' }}>
+        <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--accent-cyan)', borderTopColor: 'transparent' }} />
+      </div>
+    );
+  }
+
+  if (!user) return <LoginPage />;
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
       {/* ── Sidebar ─────────────────────────────────────────── */}
@@ -97,7 +112,7 @@ export default function App() {
           <NavSection title="Sistema"       items={systemNav} />
         </nav>
 
-        {/* Status footer */}
+        {/* User + Logout */}
         <div className="p-3 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
           <div
             className="rounded-xl px-3 py-2.5 mb-2"
@@ -113,9 +128,25 @@ export default function App() {
               Coletando em tempo real
             </div>
           </div>
-          <div className="px-1 flex items-center justify-between">
-            <Activity size={11} style={{ color: 'var(--text-dim)' }} />
-            <span className="text-[9px]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-dim)' }}>v1.1.0</span>
+
+          {/* User info + logout */}
+          <div className="flex items-center justify-between px-1">
+            <div className="min-w-0">
+              <div className="text-[11px] font-medium truncate" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                {user.name || user.username}
+              </div>
+              <div className="text-[9px] uppercase tracking-widest" style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
+                {user.role}
+              </div>
+            </div>
+            <button
+              onClick={logout}
+              className="p-1.5 rounded-lg cursor-pointer hover:brightness-125 transition-all"
+              style={{ background: 'rgba(239,68,68,0.08)', color: 'var(--accent-red)', border: '1px solid rgba(239,68,68,0.15)' }}
+              title="Sair"
+            >
+              <LogOut size={13} />
+            </button>
           </div>
         </div>
       </aside>
