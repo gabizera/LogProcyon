@@ -154,6 +154,7 @@ function parseDataFlowset(buf, offset, end, flowsetId, sourceId, unixSecs) {
       ip_privado,
       porta_publica:      porta_pub,
       porta_privada:      porta_priv,
+      tamanho_bloco:      record.field_364 || 0,
       protocolo:          proto === 6 ? 'TCP' : 'UDP',
       tipo_nat,
       equipamento_origem: 'cisco',

@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS nat_logs (
     ip_privado IPv4,
     porta_publica UInt16,
     porta_privada UInt16,
+    tamanho_bloco UInt16 DEFAULT 0,
     protocolo LowCardinality(String),
     tipo_nat LowCardinality(String),
     equipamento_origem LowCardinality(String),

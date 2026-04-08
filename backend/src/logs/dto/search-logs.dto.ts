@@ -58,6 +58,20 @@ export class SearchLogsDto {
   limit?: number = 50;
 }
 
+export class JudicialQueryDto {
+  @IsString()
+  ip_publico: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(65535)
+  porta: number;
+
+  @IsDateString()
+  timestamp: string;
+}
+
 export class StatsQueryDto {
   @IsOptional()
   @IsDateString()

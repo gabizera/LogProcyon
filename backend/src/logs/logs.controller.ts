@@ -1,6 +1,6 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { LogsService } from './logs.service';
-import { SearchLogsDto, StatsQueryDto } from './dto/search-logs.dto';
+import { SearchLogsDto, StatsQueryDto, JudicialQueryDto } from './dto/search-logs.dto';
 
 @Controller('logs')
 export class LogsController {
@@ -14,6 +14,11 @@ export class LogsController {
   @Get('stats')
   stats(@Query() dto: StatsQueryDto) {
     return this.logsService.getStats(dto);
+  }
+
+  @Get('judicial')
+  judicial(@Query() dto: JudicialQueryDto) {
+    return this.logsService.judicialSearch(dto);
   }
 
   @Get(':id')

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { ClickhouseService } from '../clickhouse/clickhouse.service';
-import { SearchLogsDto, StatsQueryDto } from './dto/search-logs.dto';
+import { SearchLogsDto, StatsQueryDto, JudicialQueryDto } from './dto/search-logs.dto';
 
 @Injectable()
 export class LogsService {
@@ -81,6 +81,55 @@ export class LogsService {
         total,
         pages: Math.ceil(total / limit),
       },
+    };
+  }
+
+  async judicialSearch(dto: JudicialQueryDto) {
+    // Busca o cliente que estava usando ip_publico:porta no momento exato
+    // Para BPA: porta_publica <= porta < porta_publica + tamanho_bloco
+    // Janela de ±5 minutos ao redor do timestamp informado para cobrir eventos de criação
+    const sql = `
+      SELECT
+        toString(ip_privado)   AS ip_privado,
+        toString(ip_publico)   AS ip_publico,
+        porta_publica,
+        tamanho_bloco,
+        porta_publica + tamanho_bloco - 1 AS porta_fim,
+        protocolo,
+        tipo_nat,
+        equipamento_origem,
+        timestamp
+      FROM nat_logs
+      WHERE ip_publico = {ip_publico:IPv4}
+        AND porta_publica <= {porta:UInt16}
+        AND (porta_publica + tamanho_bloco) > {porta:UInt16}
+        AND timestamp <= {ts_fim:DateTime64(3)}
+        AND timestamp >= {ts_inicio:DateTime64(3)}
+      ORDER BY timestamp DESC
+      LIMIT 10
+    `;
+
+    const tsMs  = new Date(dto.timestamp).getTime();
+    const janela = 5 * 60 * 1000; // ±5 minutos
+
+    const toClickhouseTs = (ms: number) =>
+      new Date(ms).toISOString().replace('T', ' ').replace('Z', '').slice(0, 23);
+
+    const rows = await this.clickhouse.query(sql, {
+      ip_publico: dto.ip_publico,
+      porta:      dto.porta,
+      ts_inicio:  toClickhouseTs(tsMs - janela),
+      ts_fim:     toClickhouseTs(tsMs + janela),
+    });
+
+    return {
+      consulta: {
+        ip_publico: dto.ip_publico,
+        porta:      dto.porta,
+        timestamp:  dto.timestamp,
+      },
+      resultados: rows,
+      total: rows.length,
     };
   }
 

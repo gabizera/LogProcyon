@@ -5,14 +5,17 @@ import {
   BotMessageSquare,
   Radio,
   ChevronRight,
+  Shield,
 } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import LogSearch from './pages/LogSearch';
 import AiAnalysis from './pages/AiAnalysis';
+import JudicialSearch from './pages/JudicialSearch';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/logs', icon: Search, label: 'Busca de Logs' },
+  { to: '/judicial', icon: Shield, label: 'Consulta Judicial' },
   { to: '/ai', icon: BotMessageSquare, label: 'Análise IA' },
 ];
 
@@ -146,6 +149,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/logs" element={<LogSearch />} />
+          <Route path="/judicial" element={<JudicialSearch />} />
           <Route path="/ai" element={<AiAnalysis />} />
         </Routes>
       </main>
