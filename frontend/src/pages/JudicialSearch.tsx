@@ -183,9 +183,11 @@ export default function JudicialSearch() {
             disabled={loading}
             className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all hover:brightness-110 cursor-pointer disabled:opacity-50"
             style={{
-              background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-              color: '#020617',
-              fontFamily: 'var(--font-display)',
+              background: 'var(--signal)',
+              color: '#050505',
+              fontFamily: 'var(--font-mono)',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
             }}
           >
             <Search size={14} />
@@ -242,6 +244,7 @@ export default function JudicialSearch() {
           </div>
 
           {/* Query summary */}
+          {result.total > 0 && (
           <div
             className="px-5 py-3 grid grid-cols-2 sm:grid-cols-4 gap-4"
             style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-subtle)' }}
@@ -262,6 +265,7 @@ export default function JudicialSearch() {
               </div>
             ))}
           </div>
+          )}
 
           {/* Empty result — hint the user */}
           {result.total === 0 && (

@@ -243,8 +243,14 @@ input:focus, select:focus, textarea:focus {
   color: var(--ink-2);
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   height: var(--topbar-h);
+}
+.statusbar > span + span,
+.statusbar .right > span + span,
+.statusbar .right > button {
+  border-left: 1px solid var(--rule-2);
+  padding-left: 16px;
 }
 .statusbar .pill {
   background: var(--signal);
@@ -297,12 +303,14 @@ input:focus, select:focus, textarea:focus {
   color: var(--ink-3);
   letter-spacing: 0.14em;
   text-transform: uppercase;
+  margin-left: auto;
 }
 .title-row .right {
-  margin-left: auto;
   display: flex;
   gap: 6px;
 }
+.title-row .right:not(:first-of-type) { margin-left: 0; }
+.title-row > .right { margin-left: 12px; }
 
 /* ── Readout row (5-cell dashed) ───────────────────────────── */
 .readout {
@@ -318,11 +326,11 @@ input:focus, select:focus, textarea:focus {
 }
 .readout .cell:last-child { border-right: none; }
 .readout .cell .k {
-  font-size: 8px;
-  letter-spacing: 0.24em;
+  font-size: 9px;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: var(--ink-3);
-  font-weight: 500;
+  color: var(--ink-2);
+  font-weight: 600;
 }
 .readout .cell .v {
   font-size: 28px;
@@ -336,9 +344,9 @@ input:focus, select:focus, textarea:focus {
 .readout .cell .v.signal { color: var(--signal); }
 .readout .cell .d {
   font-size: 10px;
-  color: var(--ink-3);
-  margin-top: 4px;
-  letter-spacing: 0.06em;
+  color: var(--ink-2);
+  margin-top: 6px;
+  letter-spacing: 0.08em;
 }
 .readout .cell .d.up { color: var(--accent-green); }
 
