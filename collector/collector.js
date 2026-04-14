@@ -131,6 +131,18 @@ function openSocket(port, portInputs) {
       if (!matched) matched = list.find(i => !i.source_ip);
       if (!matched) matched = list[0];
 
+      // Diagnostic: when a packet from an unknown IP falls back to a
+      // generic/default match, log it once per minute per remote IP so the
+      // operator can see what address is actually arriving.
+      if (matched && matched.source_ip && matched.source_ip !== rinfo.address) {
+        // exact source_ip didn't match — packet came from an unregistered IP
+        logUnmatched(rinfo.address);
+      } else if (matched && !matched.source_ip) {
+        // matched a catch-all instance
+      } else if (matched === DEFAULT_INPUT) {
+        logUnmatched(rinfo.address);
+      }
+
       const parser = getParser(matched);
       const rows = parser.parse(msg, rinfo, matched, TZ_OFFSET_MS);
 
@@ -179,24 +191,45 @@ function startListeners(inputs) {
   }
 }
 
-// ── Hot-reload: watch inputs.json for changes ─────────────────────────────────
+// ── Diagnostic: log unmatched source IPs (rate-limited) ──────────────────────
+const unmatchedSeen = new Map(); // ip -> last log timestamp
+function logUnmatched(ip) {
+  const now = Date.now();
+  const last = unmatchedSeen.get(ip) || 0;
+  if (now - last > 60000) {
+    console.warn(`[collector] unmatched source IP ${ip} — falling back. Register an instance with source_ip=${ip} to separate this traffic.`);
+    unmatchedSeen.set(ip, now);
+  }
+}
 
-let reloadDebounce = null;
+// ── Hot-reload: poll inputs.json mtime ────────────────────────────────────────
+// fs.watch is unreliable with Docker named volumes cross-container
+// (inode changes break the watcher; file may not exist at boot). Polling is
+// boring, cheap, and always works.
 
-function watchInputs() {
-  if (!fs.existsSync(CONFIG_FILE)) return;
+let lastMtime = 0;
+let pollTimer = null;
 
-  fs.watch(CONFIG_FILE, () => {
-    // Debounce: editors may trigger multiple events per save
-    clearTimeout(reloadDebounce);
-    reloadDebounce = setTimeout(() => {
+function pollInputs() {
+  try {
+    if (!fs.existsSync(CONFIG_FILE)) return;
+    const mtime = fs.statSync(CONFIG_FILE).mtimeMs;
+    if (mtime === lastMtime) return;
+    if (lastMtime !== 0) {
       console.log('[collector] inputs.json changed — reloading...');
       const newInputs = loadInputs();
       startListeners(newInputs);
-    }, 500);
-  });
+    }
+    lastMtime = mtime;
+  } catch (e) {
+    console.warn('[collector] poll error:', e.message);
+  }
+}
 
-  console.log(`[collector] Watching ${CONFIG_FILE} for changes`);
+function startPolling() {
+  pollInputs();
+  pollTimer = setInterval(pollInputs, 2000);
+  console.log(`[collector] Polling ${CONFIG_FILE} every 2s`);
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -208,14 +241,14 @@ console.log(`[collector] Data dir: ${DATA_DIR}`);
 
 const inputs = loadInputs();
 startListeners(inputs);
-watchInputs();
+startPolling();
 
 flushTimer = setInterval(scheduledFlush, FLUSH_INTERVAL);
 
 process.on('SIGTERM', () => {
   console.log('[collector] Shutting down...');
   clearInterval(flushTimer);
-  clearTimeout(reloadDebounce);
+  clearInterval(pollTimer);
   scheduledFlush();
   for (const { server } of sockets.values()) server.close();
   process.exit(0);
