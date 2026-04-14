@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users as UsersIcon, Plus, Trash2, X, Check, AlertCircle, KeyRound, Shield } from 'lucide-react';
+import { Users as UsersIcon, Plus, Trash2, X, Check, AlertCircle, KeyRound, Shield, Pencil } from 'lucide-react';
 import { fetchUsers, createUser, updateUser, deleteUser, fetchInputs, fetchPublicConfig, type User, type Input } from '../api';
 
 const ROLE_LABELS: Record<string, { label: string; color: string }> = {
@@ -162,11 +162,134 @@ function ChangePasswordModal({ user, onSave, onClose }: { user: User; onSave: (i
   );
 }
 
+function EditUserModal({ user, multiTenant, inputs, onSave, onClose }: {
+  user: User;
+  multiTenant: boolean;
+  inputs: Input[];
+  onSave: (id: string, dto: { name: string; role: string; allowed_instances: string[] }) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [form, setForm] = useState({
+    name: user.name ?? '',
+    role: user.role ?? 'operator',
+    allowed_instances: user.allowed_instances ?? [],
+  });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  const toggleInstance = (id: string) => {
+    setForm(p => ({
+      ...p,
+      allowed_instances: p.allowed_instances.includes(id)
+        ? p.allowed_instances.filter(x => x !== id)
+        : [...p.allowed_instances, id],
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setErr('');
+    try {
+      await onSave(user.id, form);
+      onClose();
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : 'Erro ao salvar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputStyle: React.CSSProperties = {
+    background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)',
+    color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: 13,
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
+      <div className="w-full max-w-xl rounded-xl overflow-hidden" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-medium)', boxShadow: 'var(--shadow-card)' }} onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+          <span className="text-sm font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>Editar usuário — {user.username}</span>
+          <button onClick={onClose} className="p-1 rounded cursor-pointer hover:bg-white/10" style={{ color: 'var(--text-muted)' }} aria-label="Fechar"><X size={16} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Nome</label>
+              <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="rounded-lg px-3 py-2" style={inputStyle} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Perfil</label>
+              <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))} className="rounded-lg px-3 py-2" style={inputStyle}>
+                <option value="admin">Admin</option>
+                <option value="operator">Operador</option>
+                <option value="viewer">Viewer</option>
+              </select>
+            </div>
+          </div>
+
+          {multiTenant && form.role !== 'admin' && (
+            <div className="mb-4">
+              <label className="text-[10px] font-semibold uppercase tracking-widest flex items-center gap-1.5 mb-2" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                <Shield size={11} /> Clientes permitidos
+              </label>
+              {inputs.length === 0 ? (
+                <div className="text-xs" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                  Nenhuma instance cadastrada ainda.
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {inputs.map(i => {
+                    const selected = form.allowed_instances.includes(i.id);
+                    return (
+                      <button
+                        key={i.id}
+                        type="button"
+                        onClick={() => toggleInstance(i.id)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all"
+                        style={{
+                          background: selected ? 'rgba(6,182,212,0.15)' : 'var(--bg-tertiary)',
+                          color: selected ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                          border: `1px solid ${selected ? 'rgba(6,182,212,0.4)' : 'var(--border-subtle)'}`,
+                          fontFamily: 'var(--font-mono)',
+                        }}
+                      >
+                        {selected ? '✓ ' : ''}{i.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="text-[10px] mt-1.5" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                Vazio = sem acesso. Admins veem tudo.
+              </div>
+            </div>
+          )}
+
+          {err && <div className="mb-3 flex items-center gap-2 text-xs" style={{ color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}><AlertCircle size={13} />{err}</div>}
+
+          <div className="flex gap-2">
+            <button type="submit" disabled={saving} className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold cursor-pointer hover:brightness-110 disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, var(--accent-cyan), #3b82f6)', color: '#020617', fontFamily: 'var(--font-display)' }}>
+              <Check size={14} />{saving ? 'Salvando...' : 'Salvar'}
+            </button>
+            <button type="button" onClick={onClose} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer hover:brightness-110"
+              style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-display)' }}>
+              <X size={14} />Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function UsersPage() {
   const [users, setUsers]         = useState<User[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showForm, setShowForm]   = useState(false);
   const [changePwd, setChangePwd] = useState<User | null>(null);
+  const [editing, setEditing]     = useState<User | null>(null);
   const [error, setError]         = useState('');
   const [multiTenant, setMultiTenant] = useState(false);
   const [inputs, setInputs] = useState<Input[]>([]);
@@ -198,6 +321,11 @@ export default function UsersPage() {
 
   const handleChangePwd = async (id: string, password: string) => {
     await updateUser(id, { password });
+  };
+
+  const handleEdit = async (id: string, dto: { name: string; role: string; allowed_instances: string[] }) => {
+    await updateUser(id, dto);
+    await load();
   };
 
   const handleDelete = async (id: string) => {
@@ -274,12 +402,16 @@ export default function UsersPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
+                        <button onClick={() => setEditing(u)} className="p-1.5 rounded-lg cursor-pointer hover:brightness-125 transition-all"
+                          style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }} title="Editar" aria-label={`Editar ${u.username}`}>
+                          <Pencil size={13} />
+                        </button>
                         <button onClick={() => setChangePwd(u)} className="p-1.5 rounded-lg cursor-pointer hover:brightness-125 transition-all"
-                          style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }} title="Trocar senha">
+                          style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }} title="Trocar senha" aria-label={`Trocar senha de ${u.username}`}>
                           <KeyRound size={13} />
                         </button>
                         <button onClick={() => handleDelete(u.id)} className="p-1.5 rounded-lg cursor-pointer hover:brightness-125 transition-all"
-                          style={{ background: 'rgba(239,68,68,0.08)', color: 'var(--accent-red)', border: '1px solid rgba(239,68,68,0.15)' }} title="Remover">
+                          style={{ background: 'rgba(239,68,68,0.08)', color: 'var(--accent-red)', border: '1px solid rgba(239,68,68,0.15)' }} title="Remover" aria-label={`Remover ${u.username}`}>
                           <Trash2 size={13} />
                         </button>
                       </div>
@@ -296,6 +428,7 @@ export default function UsersPage() {
       )}
 
       {changePwd && <ChangePasswordModal user={changePwd} onSave={handleChangePwd} onClose={() => setChangePwd(null)} />}
+      {editing && <EditUserModal user={editing} multiTenant={multiTenant} inputs={inputs} onSave={handleEdit} onClose={() => setEditing(null)} />}
     </div>
   );
 }
