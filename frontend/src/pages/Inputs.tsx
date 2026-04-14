@@ -97,6 +97,21 @@ function InputForm({
         <label htmlFor="enabled" className="text-xs cursor-pointer" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-display)' }}>Habilitado</label>
       </div>
 
+      <div
+        className="rounded-lg px-4 py-3 mb-4 flex items-center gap-3"
+        style={{ background: 'var(--bg-tertiary)', border: '1px dashed var(--border-subtle)' }}
+      >
+        <Radio size={14} style={{ color: 'var(--signal)', flexShrink: 0 }} />
+        <div className="flex-1 min-w-0">
+          <div className="text-[9px] uppercase tracking-widest mb-0.5" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            aponte o equipamento para
+          </div>
+          <div className="text-sm tabular-nums truncate" style={{ color: 'var(--signal)', fontFamily: 'var(--font-mono)' }}>
+            {window.location.hostname}:{form.port || '—'} <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>UDP</span>
+          </div>
+        </div>
+      </div>
+
       {err && (
         <div className="mb-3 flex items-center gap-2 text-xs" style={{ color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>
           <AlertCircle size={13} /> {err}

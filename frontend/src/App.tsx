@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { ChevronDown } from 'lucide-react';
 import { useAuth } from './auth';
 import api from './api';
 import LoginPage     from './pages/Login';
@@ -13,14 +14,34 @@ import StoragePage   from './pages/Storage';
 
 // Cada item declara quais roles podem enxergá-lo no nav.
 // Admin ignora tudo e vê sempre, outros perfis filtram por roles.
-const nav: { to: string; label: string; roles: string[] }[] = [
-  { to: '/',         label: 'DASHBOARD',     roles: ['admin', 'operator', 'viewer'] },
-  { to: '/logs',     label: 'LOGS',          roles: ['admin', 'operator', 'viewer'] },
-  { to: '/judicial', label: 'JUDICIAL',      roles: ['admin', 'operator']           },
-  { to: '/storage',  label: 'ARMAZENAMENTO', roles: ['admin', 'operator', 'viewer'] },
-  { to: '/inputs',   label: 'INPUTS',        roles: ['admin', 'operator', 'viewer'] },
-  { to: '/users',    label: 'USUÁRIOS',      roles: ['admin']                       },
-  { to: '/settings', label: 'CONFIG',        roles: ['admin']                       },
+type NavLeaf = { to: string; label: string; roles: string[] };
+type NavGroup = { label: string; match: string[]; children: NavLeaf[]; roles: string[] };
+type NavItem = NavLeaf | NavGroup;
+
+const isGroup = (i: NavItem): i is NavGroup => 'children' in i;
+
+const nav: NavItem[] = [
+  { to: '/', label: 'DASHBOARD', roles: ['admin', 'operator', 'viewer'] },
+  {
+    label: 'MONITORAMENTO',
+    match: ['/logs', '/judicial'],
+    roles: ['admin', 'operator', 'viewer'],
+    children: [
+      { to: '/logs',     label: 'LOGS',     roles: ['admin', 'operator', 'viewer'] },
+      { to: '/judicial', label: 'JUDICIAL', roles: ['admin', 'operator']           },
+    ],
+  },
+  {
+    label: 'CONFIGURAÇÃO',
+    match: ['/inputs', '/storage', '/users', '/settings'],
+    roles: ['admin', 'operator', 'viewer'],
+    children: [
+      { to: '/inputs',   label: 'INPUTS',        roles: ['admin', 'operator', 'viewer'] },
+      { to: '/storage',  label: 'ARMAZENAMENTO', roles: ['admin', 'operator', 'viewer'] },
+      { to: '/users',    label: 'USUÁRIOS',      roles: ['admin']                       },
+      { to: '/settings', label: 'CONFIG',        roles: ['admin']                       },
+    ],
+  },
 ];
 
 export default function App() {
@@ -59,8 +80,7 @@ export default function App() {
 
       {/* ── Top status bar (tmux-style) ─────────────────────────── */}
       <div className="statusbar">
-        <span className="pill">LOGPROCYON</span>
-        <span><span className="k">plataforma</span><b>{platformName}</b></span>
+        <span className="pill">{platformName.toUpperCase()}</span>
         <span><span className="k">modo</span><b>multi-tenant</b></span>
         <div className="right">
           <span><span className="k">usuário</span><b>{user.username}</b></span>
@@ -87,14 +107,29 @@ export default function App() {
         className="flex items-center justify-center gap-2 px-6 hairline-b"
         style={{ height: 'var(--nav-h)', background: 'var(--bg-0)' }}
       >
-        {nav.filter(item => item.roles.includes(user.role)).map(item => {
-          const isActive = item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to);
-          return (
-            <NavLink key={item.to} to={item.to} className={`topnav-link ${isActive ? 'active' : ''}`}>
-              {item.label}
-            </NavLink>
-          );
-        })}
+        {nav
+          .filter(item => item.roles.includes(user.role))
+          .map(item => {
+            if (isGroup(item)) {
+              const children = item.children.filter(c => c.roles.includes(user.role));
+              if (children.length === 0) return null;
+              return (
+                <NavDropdown
+                  key={item.label}
+                  label={item.label}
+                  match={item.match}
+                  children={children}
+                  pathname={location.pathname}
+                />
+              );
+            }
+            const isActive = item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to);
+            return (
+              <NavLink key={item.to} to={item.to} className={`topnav-link ${isActive ? 'active' : ''}`}>
+                {item.label}
+              </NavLink>
+            );
+          })}
       </nav>
 
       {/* ── Main ────────────────────────────────────────────────── */}
@@ -109,6 +144,84 @@ export default function App() {
           <Route path="/settings"  element={<RoleGate role={user.role} allow={['admin']}><SettingsPage /></RoleGate>} />
         </Routes>
       </main>
+    </div>
+  );
+}
+
+function NavDropdown({
+  label,
+  match,
+  children,
+  pathname,
+}: {
+  label: string;
+  match: string[];
+  children: NavLeaf[];
+  pathname: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const isActive = match.some(m => pathname.startsWith(m));
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [open]);
+
+  useEffect(() => { setOpen(false); }, [pathname]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={`topnav-link flex items-center gap-1.5 ${isActive ? 'active' : ''}`}
+        style={{ background: 'transparent', cursor: 'pointer' }}
+      >
+        {label}
+        <ChevronDown size={11} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+      </button>
+      {open && (
+        <div
+          className="absolute left-1/2 -translate-x-1/2 mt-1 min-w-[180px] z-50"
+          style={{
+            background: 'var(--bg-1)',
+            border: '1px solid var(--rule-1)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+          }}
+        >
+          {children.map(c => {
+            const active = pathname.startsWith(c.to);
+            return (
+              <NavLink
+                key={c.to}
+                to={c.to}
+                className="block px-4 py-2.5 text-[10px] font-medium tracking-widest uppercase transition-colors"
+                style={{
+                  color: active ? 'var(--signal)' : 'var(--ink-2)',
+                  borderBottom: '1px solid var(--rule-2)',
+                  fontFamily: 'var(--font-mono)',
+                  background: active ? 'var(--bg-2)' : 'transparent',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-2)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = active ? 'var(--bg-2)' : 'transparent'; }}
+              >
+                {c.label}
+              </NavLink>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
