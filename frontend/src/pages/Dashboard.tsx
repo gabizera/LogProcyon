@@ -3,43 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { fetchStats, fetchInputs, fetchPublicConfig, type StatsResponse, type Input } from '../api';
 
-// ── Timeline area chart (SVG) ────────────────────────────────
-function TimelinePlot({ points }: { points: { hour: string; count: number }[] }) {
-  if (!points.length) {
-    return (
-      <div
-        className="flex items-center justify-center"
-        style={{ height: 140, border: '1px dashed var(--rule-1)', color: 'var(--ink-3)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase' }}
-      >
-        sem dados · aguardando eventos
-      </div>
-    );
-  }
-  const max = Math.max(...points.map(p => p.count), 1);
-  const W = 1000;
-  const H = 130;
-  const stepX = points.length > 1 ? W / (points.length - 1) : 0;
-
-  const coords = points.map((p, i) => ({
-    x: i * stepX,
-    y: H - (p.count / max) * (H - 14) - 4,
-  }));
-  const trace = coords.map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
-  const fill = `M0,${H} L0,${coords[0].y.toFixed(1)} ${coords.slice(1).map(c => `L${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ')} L${W},${H} Z`;
-
-  return (
-    <div style={{ position: 'relative', height: H, borderTop: '1px solid var(--rule-1)', borderBottom: '1px solid var(--rule-1)' }}>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: '100%', display: 'block' }}>
-        {[26, 52, 78, 104].map(y => (
-          <line key={y} x1="0" y1={y} x2={W} y2={y} stroke="var(--rule-1)" strokeWidth="1" />
-        ))}
-        <path d={fill} fill="var(--signal)" opacity="0.08" />
-        <path d={trace} fill="none" stroke="var(--signal)" strokeWidth="1.5" />
-      </svg>
-    </div>
-  );
-}
-
 export default function Dashboard() {
   const navigate = useNavigate();
   const [stats, setStats]         = useState<StatsResponse | null>(null);
@@ -199,62 +162,80 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Timeline ────────────────────────────────────────── */}
-      <div className="px-6 pt-7 pb-6">
-        <div className="flex justify-between mb-3" style={{ fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--ink-3)', fontWeight: 500 }}>
-          <span>VOLUME · ÚLTIMAS 24H</span>
-          <span style={{ color: 'var(--ink-2)' }}>
-            UNIDADE <b style={{ color: 'var(--signal)' }}>eventos / hora</b> · PICO <b style={{ color: 'var(--signal)' }} className="tabular">{peak.count}</b>
-          </span>
-        </div>
-        <TimelinePlot points={volume} />
-        <div className="flex justify-between mt-2 tabular" style={{ fontSize: 9, color: 'var(--ink-2)', letterSpacing: '0.08em' }}>
-          <span>−24h</span>
-          <span>−18h</span>
-          <span>−12h</span>
-          <span>−6h</span>
-          <span>agora</span>
-        </div>
+      {/* ── Top IPs (2 colunas lado a lado) ─────────────────── */}
+      <div
+        className="grid"
+        style={{ gridTemplateColumns: '1fr 1fr', borderTop: '1px solid var(--rule-1)' }}
+      >
+        <TopIpsPanel
+          title="TOP IPs PÚBLICOS"
+          rows={stats?.top_ips_publicos ?? []}
+          onRowClick={ip => navigate(`/logs?ip_publico=${ip}`)}
+          scope={currentInstance}
+          className="dashed-r"
+        />
+        <TopIpsPanel
+          title="TOP IPs PRIVADOS"
+          rows={stats?.top_ips_privados ?? []}
+          onRowClick={ip => navigate(`/logs?ip_privado=${ip}`)}
+          scope={currentInstance}
+        />
       </div>
+    </div>
+  );
+}
 
-      {/* ── Top IPs (hairline table) ────────────────────────── */}
-      <div className="px-6 pt-7 pb-8" style={{ borderTop: '1px solid var(--rule-1)' }}>
-        <div className="section-head" style={{ padding: 0, marginBottom: 10 }}>
-          <span>TOP IPs PÚBLICOS · CLIQUE PARA FILTRAR</span>
-          <span className="right">ORIGEM <b>{currentInstance}</b></span>
-        </div>
-        <div className="hairline">
-          {(stats?.top_ips_publicos ?? []).slice(0, 8).map((row, i, arr) => {
-            const maxCount = Math.max(...(stats?.top_ips_publicos ?? []).map(r => Number(r.total)), 1);
-            const w = (Number(row.total) / maxCount) * 100;
-            return (
-              <div
-                key={row.ip}
-                onClick={() => navigate(`/logs?ip_publico=${row.ip}`)}
-                className="cursor-pointer grid items-center"
-                style={{
-                  gridTemplateColumns: '200px 1fr 80px',
-                  gap: 16,
-                  padding: '8px 16px',
-                  borderBottom: i < arr.length - 1 ? '1px solid var(--rule-1)' : 'none',
-                  fontSize: 11,
-                  fontFamily: 'var(--font-mono)',
-                }}
-              >
-                <span className="tabular" style={{ color: 'var(--signal)' }}>{row.ip}</span>
-                <div style={{ height: 4, background: 'var(--bg-2)', position: 'relative' }}>
-                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: 'var(--signal)', width: `${w}%` }} />
-                </div>
-                <span className="tabular text-right" style={{ color: 'var(--ink-2)' }}>{Number(row.total).toLocaleString('pt-BR')}</span>
+function TopIpsPanel({
+  title,
+  rows,
+  onRowClick,
+  scope,
+  className = '',
+}: {
+  title: string;
+  rows: { ip: string; total: number }[];
+  onRowClick: (ip: string) => void;
+  scope: string;
+  className?: string;
+}) {
+  const maxCount = Math.max(...rows.map(r => Number(r.total)), 1);
+  const visible = rows.slice(0, 8);
+  return (
+    <div className={`px-6 pt-6 pb-8 ${className}`}>
+      <div className="section-head" style={{ padding: 0, marginBottom: 10 }}>
+        <span>{title} · CLIQUE PARA FILTRAR</span>
+        <span className="right">ORIGEM <b>{scope}</b></span>
+      </div>
+      <div className="hairline">
+        {visible.map((row, i, arr) => {
+          const w = (Number(row.total) / maxCount) * 100;
+          return (
+            <div
+              key={row.ip}
+              onClick={() => onRowClick(row.ip)}
+              className="cursor-pointer grid items-center"
+              style={{
+                gridTemplateColumns: '160px 1fr 60px',
+                gap: 12,
+                padding: '8px 14px',
+                borderBottom: i < arr.length - 1 ? '1px solid var(--rule-1)' : 'none',
+                fontSize: 11,
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              <span className="tabular truncate" style={{ color: 'var(--signal)' }}>{row.ip}</span>
+              <div style={{ height: 4, background: 'var(--bg-2)', position: 'relative' }}>
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: 'var(--signal)', width: `${w}%` }} />
               </div>
-            );
-          })}
-          {(stats?.top_ips_publicos ?? []).length === 0 && (
-            <div className="p-8 text-center" style={{ color: 'var(--ink-3)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-              sem dados
+              <span className="tabular text-right" style={{ color: 'var(--ink-2)' }}>{Number(row.total).toLocaleString('pt-BR')}</span>
             </div>
-          )}
-        </div>
+          );
+        })}
+        {rows.length === 0 && (
+          <div className="p-8 text-center" style={{ color: 'var(--ink-3)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+            sem dados
+          </div>
+        )}
       </div>
     </div>
   );
