@@ -26,7 +26,6 @@ export default function FilterBar({ onApply, onClear, initial }: FilterBarProps)
     ip_publico: initial?.ip_publico ?? '',
     ip_privado: initial?.ip_privado ?? '',
     protocolo: initial?.protocolo ?? '',
-    tipo_nat: initial?.tipo_nat ?? '',
     equipamento_origem: initial?.equipamento_origem ?? '',
     start_date: initial?.start_date ?? '',
     end_date: initial?.end_date ?? '',
@@ -52,7 +51,7 @@ export default function FilterBar({ onApply, onClear, initial }: FilterBarProps)
   };
 
   const handleClear = () => {
-    const empty = { ip_publico: '', ip_privado: '', protocolo: '', tipo_nat: '', equipamento_origem: '', start_date: '', end_date: '' };
+    const empty = { ip_publico: '', ip_privado: '', protocolo: '', equipamento_origem: '', start_date: '', end_date: '' };
     setFilters(empty);
     onClear();
   };
@@ -89,16 +88,6 @@ export default function FilterBar({ onApply, onClear, initial }: FilterBarProps)
             <option value="TCP">TCP</option>
             <option value="UDP">UDP</option>
             <option value="ICMP">ICMP</option>
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] font-semibold uppercase tracking-wider" style={labelStyle}>Tipo NAT</label>
-          <select name="tipo_nat" value={filters.tipo_nat} onChange={handleChange} className={inputClass} style={inputStyle}>
-            <option value="">Todos</option>
-            <option value="estatico">Estático</option>
-            <option value="cgnat">CGNAT</option>
-            <option value="bpa">BPA</option>
           </select>
         </div>
 
