@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  /* ── Surfaces (quase preto, neutro) ─────────────────────────── */
-  --bg-0: #0b0b0b;
-  --bg-1: #111;
-  --bg-2: #161616;
-  --bg-3: #1c1c1c;
+  /* ── Surfaces (near-black mas um degrau acima do 0b0b0b) ────── */
+  --bg-0: #0e0e0e;
+  --bg-1: #161616;
+  --bg-2: #1c1c1c;
+  --bg-3: #232323;
 
   /* Legacy aliases */
   --bg-primary:    var(--bg-0);
@@ -15,32 +15,32 @@
   --bg-card:       var(--bg-1);
 
   /* ── Rules / divisores ─────────────────────────────────────── */
-  --rule-1: #1a1a1a;
-  --rule-2: #262626;
-  --rule-3: #3a3a3a;
+  --rule-1: #222222;
+  --rule-2: #2e2e2e;
+  --rule-3: #3e3e3e;
 
   --border-subtle: var(--rule-1);
   --border-medium: var(--rule-2);
   --border-strong: var(--rule-3);
 
-  /* ── Ink ───────────────────────────────────────────────────── */
+  /* ── Ink (texto inativo sobe um degrau pra ficar legível) ──── */
   --ink-0: #f4f4f5;
-  --ink-1: #a1a1aa;
-  --ink-2: #71717a;
-  --ink-3: #52525b;
-  --ink-4: #3f3f46;
+  --ink-1: #b5b5bd;   /* antes: #a1a1aa */
+  --ink-2: #8e8e99;   /* antes: #71717a */
+  --ink-3: #6d6d76;   /* antes: #52525b — esse é o mais crítico */
+  --ink-4: #4a4a52;   /* antes: #3f3f46 */
 
   --text-primary:   var(--ink-0);
   --text-secondary: var(--ink-1);
   --text-muted:     var(--ink-2);
   --text-dim:       var(--ink-4);
 
-  /* ── Signal (única cor de acento — teal mineral) ───────────── */
-  --signal:      #2f8f87;
-  --signal-hi:   #3ba69e;
-  --signal-lo:   #1f6b65;
-  --signal-bg:   rgba(47, 143, 135, 0.1);
-  --signal-line: rgba(47, 143, 135, 0.28);
+  /* ── Signal (accent amber CRT — contraste 10.8:1 AAA) ──────── */
+  --signal:      #ffb000;
+  --signal-hi:   #ffc547;
+  --signal-lo:   #cc8c00;
+  --signal-bg:   rgba(255, 176, 0, 0.12);
+  --signal-line: rgba(255, 176, 0, 0.32);
 
   /* Legacy aliases — tudo agora é o signal */
   --accent-cyan:      var(--signal);
