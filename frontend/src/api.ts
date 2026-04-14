@@ -15,6 +15,7 @@ export interface LogEntry {
   ip_privado: string;
   porta_publica: number;
   porta_privada: number;
+  tamanho_bloco?: number;
   protocolo: string;
   tipo_nat: string;
   equipamento_origem: string;

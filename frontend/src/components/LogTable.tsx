@@ -10,8 +10,9 @@ const columns = [
   { key: 'timestamp',         label: 'Timestamp'    },
   { key: 'ip_publico',        label: 'IP Público'   },
   { key: 'ip_privado',        label: 'IP Privado'   },
-  { key: 'porta_publica',     label: 'P. Pública'   },
-  { key: 'porta_privada',     label: 'P. Privada'   },
+  { key: 'porta_inicio',      label: 'P. Inicial'   },
+  { key: 'porta_fim',         label: 'P. Final'     },
+  { key: 'tamanho_bloco',     label: 'Bloco'        },
   { key: 'protocolo',         label: 'Protocolo'    },
   { key: 'tipo_nat',          label: 'Tipo NAT'     },
   { key: 'equipamento_origem',label: 'Equipamento'  },
@@ -113,10 +114,17 @@ export default function LogTable({ logs, loading, onRowClick }: LogTableProps) {
                   {log.ip_privado}
                 </td>
                 <td className="px-4 py-2.5 whitespace-nowrap tabular-nums" style={{ color: 'var(--text-secondary)' }}>
-                  {log.porta_publica}
+                  {log.porta_publica || <span style={{ color: 'var(--text-dim)' }}>—</span>}
                 </td>
                 <td className="px-4 py-2.5 whitespace-nowrap tabular-nums" style={{ color: 'var(--text-secondary)' }}>
-                  {log.porta_privada}
+                  {log.tamanho_bloco && log.tamanho_bloco > 0
+                    ? log.porta_publica + log.tamanho_bloco - 1
+                    : <span style={{ color: 'var(--text-dim)' }}>—</span>}
+                </td>
+                <td className="px-4 py-2.5 whitespace-nowrap tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                  {log.tamanho_bloco && log.tamanho_bloco > 0
+                    ? log.tamanho_bloco.toLocaleString('pt-BR')
+                    : <span style={{ color: 'var(--text-dim)' }}>—</span>}
                 </td>
                 <td className="px-4 py-2.5 whitespace-nowrap">
                   <ProtocolBadge proto={log.protocolo} />
