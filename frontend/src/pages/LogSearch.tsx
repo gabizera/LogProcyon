@@ -49,25 +49,12 @@ export default function LogSearch() {
   const goToPage     = useCallback((page: number) => search({ ...currentFilters, page, limit: 50 }), [search, currentFilters]);
 
   return (
-    <div className="p-6 max-w-full">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-5">
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-          style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.15)' }}
-        >
-          <Layers size={15} style={{ color: 'var(--accent-cyan)' }} />
-        </div>
-        <div>
-          <h2 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
-            Busca de Logs
-          </h2>
-          <span className="text-[10px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-            Filtre e pesquise registros NAT/CGNAT/BPA
-          </span>
-        </div>
+    <div>
+      <div className="title-row">
+        <h2>monitor<span className="accent"> / query</span></h2>
+        <span className="meta">busca de logs nat · cgnat · bpa</span>
       </div>
-
+      <div className="px-6 pt-4 pb-8">
       <FilterBar onApply={handleApply} onClear={handleClear} initial={currentFilters} />
 
       {error && (
@@ -141,6 +128,7 @@ export default function LogSearch() {
       )}
 
       <SessionView log={selectedLog} onClose={() => setSelectedLog(null)} />
+      </div>
     </div>
   );
 }

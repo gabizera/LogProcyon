@@ -61,16 +61,12 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}>
-          <SettingsIcon size={17} style={{ color: 'var(--accent-amber)' }} />
-        </div>
-        <div>
-          <h2 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Configurações</h2>
-          <span className="text-[10px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Timezone, nome da plataforma e retenção de dados</span>
-        </div>
+    <div className="max-w-3xl">
+      <div className="title-row">
+        <h2>system<span className="accent"> / conf</span></h2>
+        <span className="meta">timezone · nome da plataforma · retenção</span>
       </div>
+      <div className="px-6 pt-4 pb-8">
 
       {errMsg && status === 'error' && (
         <div className="mb-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs" style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>
@@ -180,6 +176,7 @@ export default function SettingsPage() {
             </div>
           ))}
         </div>
+      </div>
       </div>
     </div>
   );

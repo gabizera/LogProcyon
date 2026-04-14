@@ -62,22 +62,17 @@ export default function StoragePage() {
   const compressionRatio = disk.uncompressed_bytes > 0 ? (disk.uncompressed_bytes / disk.compressed_bytes).toFixed(1) : '—';
 
   return (
-    <div className="p-6 max-w-6xl">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}>
-            <HardDrive size={17} style={{ color: 'var(--accent-cyan)' }} />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Armazenamento</h2>
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Volume de logs e uso de disco por dia</span>
-          </div>
+    <div className="max-w-6xl">
+      <div className="title-row">
+        <h2>monitor<span className="accent"> / storage</span></h2>
+        <span className="meta">volume de logs · uso de disco · retenção</span>
+        <div className="right">
+          <button onClick={load} className="topnav-link cursor-pointer flex items-center gap-1.5" style={{ background: 'transparent' }}>
+            <RefreshCw size={10} /> REFRESH
+          </button>
         </div>
-        <button onClick={load} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer hover:brightness-110"
-          style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)' }}>
-          <RefreshCw size={12} /> Atualizar
-        </button>
       </div>
+      <div className="px-6 pt-4 pb-8">
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -127,6 +122,7 @@ export default function StoragePage() {
         {(data?.daily ?? []).length === 0 && (
           <div className="px-4 py-14 text-center text-sm" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Nenhum dado de armazenamento disponível.</div>
         )}
+      </div>
       </div>
     </div>
   );

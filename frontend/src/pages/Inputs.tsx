@@ -153,26 +153,19 @@ export default function Inputs() {
   };
 
   return (
-    <div className="p-6 max-w-5xl">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.15)' }}>
-            <Radio size={17} style={{ color: 'var(--accent-cyan)' }} />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Inputs</h2>
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-              Fontes de log configuradas — Cisco, A10, Nokia, Hillstone, Juniper
-            </span>
-          </div>
-        </div>
+    <div className="max-w-5xl">
+      <div className="title-row">
+        <h2>sources<span className="accent"> / inputs</span></h2>
+        <span className="meta">cisco · a10 · nokia · hillstone · juniper</span>
         {!showForm && !editing && (
-          <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer hover:brightness-110"
-            style={{ background: 'linear-gradient(135deg, var(--accent-cyan), #3b82f6)', color: '#020617', fontFamily: 'var(--font-display)' }}>
-            <Plus size={14} /> Novo Input
-          </button>
+          <div className="right">
+            <button onClick={() => setShowForm(true)} className="topnav-link cursor-pointer flex items-center gap-1.5" style={{ background: 'transparent' }}>
+              <Plus size={11} /> NOVO INPUT
+            </button>
+          </div>
         )}
       </div>
+      <div className="px-6 pt-4 pb-8">
 
       {error && (
         <div className="mb-4 px-4 py-2.5 rounded-lg text-xs" style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>
@@ -258,12 +251,13 @@ export default function Inputs() {
       )}
 
       {/* Info box */}
-      <div className="mt-6 rounded-xl p-4" style={{ background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.1)' }}>
-        <p className="text-xs" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', lineHeight: 1.7 }}>
-          <span style={{ color: 'var(--accent-cyan)' }}>Hot-reload:</span> O collector detecta alterações automaticamente — não é necessário reiniciar.
-          Novos inputs e portas são aplicados em até 1 segundo após salvar.
+      <div className="mt-6 hairline p-4" style={{ background: 'var(--signal-bg)' }}>
+        <p className="text-xs" style={{ color: 'var(--ink-2)', fontFamily: 'var(--font-mono)', lineHeight: 1.7 }}>
+          <span style={{ color: 'var(--signal)' }}>HOT-RELOAD:</span> o collector detecta alterações automaticamente — não é necessário reiniciar.
+          Novos inputs e portas são aplicados em até 2 segundos após salvar.
           Múltiplos inputs na mesma porta são distinguidos pelo IP de origem.
         </p>
+      </div>
       </div>
     </div>
   );

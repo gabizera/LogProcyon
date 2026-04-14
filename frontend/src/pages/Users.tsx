@@ -335,24 +335,19 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="p-6 max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
-            <UsersIcon size={17} style={{ color: 'var(--accent-blue)' }} />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Usuários</h2>
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Gerenciamento de acessos ao LogProcyon</span>
-          </div>
-        </div>
+    <div className="max-w-5xl">
+      <div className="title-row">
+        <h2>system<span className="accent"> / users</span></h2>
+        <span className="meta">gerenciamento de acessos</span>
         {!showForm && (
-          <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer hover:brightness-110"
-            style={{ background: 'linear-gradient(135deg, var(--accent-cyan), #3b82f6)', color: '#020617', fontFamily: 'var(--font-display)' }}>
-            <Plus size={14} /> Novo Usuário
-          </button>
+          <div className="right">
+            <button onClick={() => setShowForm(true)} className="topnav-link cursor-pointer flex items-center gap-1.5" style={{ background: 'transparent' }}>
+              <Plus size={11} /> NOVO USUÁRIO
+            </button>
+          </div>
         )}
       </div>
+      <div className="px-6 pt-4 pb-8">
 
       {error && (
         <div className="mb-4 px-4 py-2.5 rounded-lg text-xs" style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>
@@ -444,6 +439,7 @@ export default function UsersPage() {
 
       {changePwd && <ChangePasswordModal user={changePwd} onSave={handleChangePwd} onClose={() => setChangePwd(null)} />}
       {editing && <EditUserModal user={editing} multiTenant={multiTenant} inputs={inputs} onSave={handleEdit} onClose={() => setEditing(null)} />}
+      </div>
     </div>
   );
 }

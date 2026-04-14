@@ -60,24 +60,12 @@ export default function JudicialSearch() {
   };
 
   return (
-    <div className="p-6 max-w-3xl">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <div
-          className="flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
-          style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}
-        >
-          <Shield size={18} style={{ color: 'var(--accent-amber)' }} />
-        </div>
-        <div>
-          <h2 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
-            Consulta Judicial
-          </h2>
-          <span className="text-[10px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-            Identifica o assinante por IP público, porta e período
-          </span>
-        </div>
+    <div className="max-w-4xl">
+      <div className="title-row">
+        <h2>monitor<span className="accent"> / forensic</span></h2>
+        <span className="meta">identifica o assinante por ip público + porta + período</span>
       </div>
+      <div className="px-6 pt-4 pb-8">
 
       {/* Form */}
       <form
@@ -337,6 +325,7 @@ export default function JudicialSearch() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }
