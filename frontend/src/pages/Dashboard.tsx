@@ -118,7 +118,10 @@ export default function Dashboard() {
   const peak = volume.reduce((acc, v) => (v.count > acc.count ? v : acc), { hour: '—', count: 0 });
   const rate = volume.length > 0 ? (volume.reduce((s, v) => s + v.count, 0) / volume.length).toFixed(1) : '0.0';
 
-  const currentInstance = selectedInstance || (inputs[0]?.name ?? '—');
+  // Quando nada está selecionado, mostramos "todas as fontes" explicitamente
+  // em vez de cair no nome do primeiro equipamento cadastrado — que dá a
+  // impressão errada de que o dashboard está escopado nele.
+  const currentInstance = selectedInstance || 'todas as fontes';
 
   return (
     <div className="animate-card">
