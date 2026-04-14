@@ -24,10 +24,10 @@ export default function LoginPage({ platformName = 'LogProcyon' }: { platformNam
 
   const inputStyle: React.CSSProperties = {
     background: 'var(--bg-0)',
-    border: '1px solid var(--rule-1)',
+    border: '1px solid var(--rule-2)',
     color: 'var(--ink-0)',
     fontFamily: 'var(--font-mono)',
-    fontSize: 12,
+    fontSize: 13,
     borderRadius: 0,
   };
 
@@ -48,13 +48,13 @@ export default function LoginPage({ platformName = 'LogProcyon' }: { platformNam
       style={{ background: 'var(--bg-0)' }}
     >
       <div
-        className="w-full max-w-[340px] hairline"
-        style={{ background: 'var(--bg-1)', padding: '28px 28px 26px', fontFamily: 'var(--font-mono)' }}
+        className="w-full max-w-[360px] hairline"
+        style={{ background: 'var(--bg-1)', padding: '30px 30px 26px', fontFamily: 'var(--font-mono)' }}
       >
         {/* Brand */}
         <div className="flex items-center gap-3 mb-5">
           <div
-            className="flex items-center justify-center w-[34px] h-[34px]"
+            className="flex items-center justify-center w-[36px] h-[36px] shrink-0"
             style={{
               background: 'var(--signal)',
               color: '#050505',
@@ -66,18 +66,24 @@ export default function LoginPage({ platformName = 'LogProcyon' }: { platformNam
           >
             LP
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div
-              className="font-semibold truncate"
-              style={{ fontSize: 15, color: 'var(--ink-0)', letterSpacing: '0.04em' }}
+              className="font-semibold"
+              style={{ fontSize: 16, color: 'var(--ink-0)', letterSpacing: '0.04em' }}
             >
               {platformName}
             </div>
             <div
-              className="uppercase truncate"
-              style={{ fontSize: 9, color: 'var(--ink-3)', letterSpacing: '0.14em', marginTop: 2 }}
+              className="uppercase"
+              style={{
+                fontSize: 9,
+                color: 'var(--ink-1)',
+                letterSpacing: '0.14em',
+                marginTop: 3,
+                lineHeight: 1.5,
+              }}
             >
-              sistema de logs da procyon tecnologia
+              sistema de logs<br />da procyon tecnologia
             </div>
           </div>
         </div>
@@ -141,12 +147,13 @@ export default function LoginPage({ platformName = 'LogProcyon' }: { platformNam
         </form>
 
         <div
-          className="mt-4 text-center uppercase"
+          className="mt-5 text-center uppercase"
           style={{
             fontSize: 9,
-            color: 'var(--ink-4)',
-            letterSpacing: '0.14em',
+            color: 'var(--ink-2)',
+            letterSpacing: '0.16em',
             fontFamily: 'var(--font-mono)',
+            fontWeight: 500,
           }}
         >
           v1.0 · procyon tecnologia
