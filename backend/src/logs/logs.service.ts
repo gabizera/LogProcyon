@@ -318,8 +318,7 @@ export class LogsService {
         count() AS count,
         groupUniqArray(equipamento_origem) AS sources
       FROM nat_logs
-      WHERE timestamp >= now() - INTERVAL 24 HOUR
-      ${conditions.length > 0 ? 'AND ' + conditions.join(' AND ') : ''}
+      ${where}
       GROUP BY ip_publico
       ORDER BY count DESC
       LIMIT 10
@@ -331,8 +330,7 @@ export class LogsService {
         count() AS count,
         groupUniqArray(equipamento_origem) AS sources
       FROM nat_logs
-      WHERE timestamp >= now() - INTERVAL 24 HOUR
-      ${conditions.length > 0 ? 'AND ' + conditions.join(' AND ') : ''}
+      ${where}
       GROUP BY ip_privado
       ORDER BY count DESC
       LIMIT 10

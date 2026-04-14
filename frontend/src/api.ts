@@ -88,10 +88,23 @@ export interface PublicConfig {
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
-export async function fetchStats(equipamento_origem?: string): Promise<StatsResponse> {
-  const qs = equipamento_origem
-    ? `?equipamento_origem=${encodeURIComponent(equipamento_origem)}`
-    : '';
+export async function fetchStats(
+  equipamento_origem?: string,
+  rangeMinutes?: number,
+): Promise<StatsResponse> {
+  const params = new URLSearchParams();
+  if (equipamento_origem) params.set('equipamento_origem', equipamento_origem);
+  if (rangeMinutes && rangeMinutes > 0) {
+    const now = new Date();
+    const start = new Date(now.getTime() - rangeMinutes * 60_000);
+    const toNaive = (d: Date) => {
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    };
+    params.set('start_date', toNaive(start));
+    params.set('end_date', toNaive(now));
+  }
+  const qs = params.toString() ? `?${params.toString()}` : '';
   const { data } = await api.get(`/logs/stats${qs}`);
   return {
     total_logs:              data.total          ?? 0,

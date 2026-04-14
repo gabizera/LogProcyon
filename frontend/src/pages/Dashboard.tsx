@@ -3,6 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { RefreshCw, Radio } from 'lucide-react';
 import { fetchStats, fetchInputs, fetchPublicConfig, type StatsResponse, type Input } from '../api';
 
+const RANGE_PRESETS: { value: number; label: string; short: string }[] = [
+  { value: 1,    label: '1 MIN',  short: '1m'  },
+  { value: 5,    label: '5 MIN',  short: '5m'  },
+  { value: 15,   label: '15 MIN', short: '15m' },
+  { value: 60,   label: '1 HORA', short: '1h'  },
+  { value: 720,  label: '12 HORAS', short: '12h' },
+  { value: 1440, label: '24 HORAS', short: '24h' },
+];
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [stats, setStats]         = useState<StatsResponse | null>(null);
@@ -12,10 +21,11 @@ export default function Dashboard() {
   const [multiTenant, setMultiTenant] = useState(false);
   const [inputs, setInputs] = useState<Input[]>([]);
   const [selectedInstance, setSelectedInstance] = useState<string>('');
+  const [rangeMinutes, setRangeMinutes] = useState<number>(1440);
 
-  const loadStats = useCallback(async (instance?: string) => {
+  const loadStats = useCallback(async (instance?: string, range?: number) => {
     try {
-      const data = await fetchStats(instance || undefined);
+      const data = await fetchStats(instance || undefined, range);
       setStats(data);
       setError(null);
       setLastUpdate(new Date());
@@ -38,10 +48,10 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    loadStats(selectedInstance);
-    const id = setInterval(() => loadStats(selectedInstance), 30000);
+    loadStats(selectedInstance, rangeMinutes);
+    const id = setInterval(() => loadStats(selectedInstance, rangeMinutes), 30000);
     return () => clearInterval(id);
-  }, [loadStats, selectedInstance]);
+  }, [loadStats, selectedInstance, rangeMinutes]);
 
   const showSelector = inputs.length >= 1;
 
@@ -59,7 +69,7 @@ export default function Dashboard() {
         <div className="hairline p-8 max-w-sm text-center" style={{ background: 'var(--bg-1)' }}>
           <p className="text-xs mb-4" style={{ color: 'var(--accent-red)', fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>{error}</p>
           <button
-            onClick={() => loadStats(selectedInstance)}
+            onClick={() => loadStats(selectedInstance, rangeMinutes)}
             className="topnav-link cursor-pointer"
             style={{ background: 'transparent' }}
           >
@@ -85,6 +95,7 @@ export default function Dashboard() {
   // em vez de cair no nome do primeiro equipamento cadastrado — que dá a
   // impressão errada de que o dashboard está escopado nele.
   const currentInstance = selectedInstance || 'todas as fontes';
+  const currentRangeLabel = RANGE_PRESETS.find(p => p.value === rangeMinutes)?.label ?? '';
 
   return (
     <div className="animate-card">
@@ -115,8 +126,21 @@ export default function Dashboard() {
               </select>
             </>
           )}
+          <label htmlFor="dash-range" className="sr-only">Janela de tempo</label>
+          <select
+            id="dash-range"
+            aria-label="Janela de tempo"
+            value={rangeMinutes}
+            onChange={e => setRangeMinutes(parseInt(e.target.value))}
+            className="topnav-link cursor-pointer"
+            style={{ background: 'transparent', color: 'var(--signal)', borderColor: 'var(--signal)' }}
+          >
+            {RANGE_PRESETS.map(p => (
+              <option key={p.value} value={p.value}>ÚLTIMOS {p.label}</option>
+            ))}
+          </select>
           <button
-            onClick={() => loadStats(selectedInstance)}
+            onClick={() => loadStats(selectedInstance, rangeMinutes)}
             className="topnav-link cursor-pointer flex items-center gap-1.5"
             style={{ background: 'transparent' }}
           >
@@ -130,12 +154,12 @@ export default function Dashboard() {
         <div className="cell">
           <div className="k">TOTAL</div>
           <div className="v tabular">{total.toLocaleString('pt-BR')}</div>
-          <div className="d">eventos capturados</div>
+          <div className="d">últimos {currentRangeLabel.toLowerCase()}</div>
         </div>
         <div className="cell">
           <div className="k">HOJE</div>
           <div className="v tabular">{today.toLocaleString('pt-BR')}</div>
-          <div className="d up">últimas 24h</div>
+          <div className="d up">dia corrente</div>
         </div>
         <div className="cell">
           <div className="k">IP PÚBLICO</div>
@@ -160,7 +184,7 @@ export default function Dashboard() {
         style={{ gridTemplateColumns: '1fr 1fr', borderTop: '1px solid var(--rule-1)' }}
       >
         <TopIpsPanel
-          title="TOP IPs PÚBLICOS · ÚLTIMAS 24H"
+          title={`TOP IPs PÚBLICOS · ÚLTIMOS ${currentRangeLabel}`}
           rows={stats?.top_ips_publicos ?? []}
           onRowClick={ip => navigate(`/logs?ip_publico=${ip}`)}
           scope={currentInstance}
@@ -168,7 +192,7 @@ export default function Dashboard() {
           className="dashed-r"
         />
         <TopIpsPanel
-          title="TOP IPs PRIVADOS · ÚLTIMAS 24H"
+          title={`TOP IPs PRIVADOS · ÚLTIMOS ${currentRangeLabel}`}
           rows={stats?.top_ips_privados ?? []}
           onRowClick={ip => navigate(`/logs?ip_privado=${ip}`)}
           scope={currentInstance}
