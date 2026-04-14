@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, AlertCircle, CheckCircle2, Clock, User } from 'lucide-react';
-import api, { fetchInputs, type Input } from '../api';
+import api, { fetchInputs, fetchCgnatPools } from '../api';
 
 interface JudicialResult {
   ip_privado: string;
@@ -26,10 +26,21 @@ export default function JudicialSearch() {
   const [result, setResult] = useState<JudicialResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [instances, setInstances] = useState<Input[]>([]);
+  const [equipamentos, setEquipamentos] = useState<string[]>([]);
 
   useEffect(() => {
-    fetchInputs().then(setInstances).catch(() => setInstances([]));
+    (async () => {
+      try {
+        const [ins, pools] = await Promise.all([fetchInputs(), fetchCgnatPools()]);
+        const merged = Array.from(new Set([
+          ...ins.map(i => i.name),
+          ...pools.map(p => p.equipamento_origem),
+        ])).filter(Boolean).sort();
+        setEquipamentos(merged);
+      } catch {
+        setEquipamentos([]);
+      }
+    })();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -130,8 +141,8 @@ export default function JudicialSearch() {
               style={inputStyle}
             >
               <option value="">Todos</option>
-              {instances.map(i => (
-                <option key={i.id} value={i.name}>{i.name}</option>
+              {equipamentos.map(name => (
+                <option key={name} value={name}>{name}</option>
               ))}
             </select>
           </div>

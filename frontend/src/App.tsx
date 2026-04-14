@@ -38,7 +38,7 @@ const nav: NavItem[] = [
     roles: ['admin', 'operator', 'viewer'],
     children: [
       { to: '/inputs',      label: 'INPUTS',        roles: ['admin', 'operator', 'viewer'] },
-      { to: '/cgnat-pools', label: 'POOLS CGNAT',   roles: ['admin', 'operator']           },
+      { to: '/cgnat-pools', label: 'MIKROTIK CGNAT', roles: ['admin', 'operator']          },
       { to: '/storage',     label: 'ARMAZENAMENTO', roles: ['admin', 'operator', 'viewer'] },
       { to: '/users',       label: 'USUÁRIOS',      roles: ['admin']                       },
       { to: '/settings',    label: 'CONFIG',        roles: ['admin']                       },

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Pencil, Trash2, X, Check, AlertCircle, Calculator } from 'lucide-react';
 import {
   fetchCgnatPools, createCgnatPool, updateCgnatPool, deleteCgnatPool,
-  fetchInputs, type CgnatPool, type Input,
+  type CgnatPool,
 } from '../api';
 
 const inputStyle: React.CSSProperties = {
@@ -44,11 +44,10 @@ const emptyForm: FormData = {
   description:        '',
 };
 
-function PoolForm({ initial, onSave, onCancel, instances }: {
+function PoolForm({ initial, onSave, onCancel }: {
   initial: FormData;
   onSave: (f: FormData) => Promise<void>;
   onCancel: () => void;
-  instances: Input[];
 }) {
   const [form, setForm] = useState<FormData>(initial);
   const [saving, setSaving] = useState(false);
@@ -86,11 +85,8 @@ function PoolForm({ initial, onSave, onCancel, instances }: {
     <form onSubmit={handleSubmit} className="rounded-xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-medium)' }}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Equipamento *</label>
-          <select value={form.equipamento_origem} onChange={e => set('equipamento_origem', e.target.value)} required className="rounded-lg px-3 py-2" style={inputStyle}>
-            <option value="">Selecione...</option>
-            {instances.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
-          </select>
+          <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Nome do Mikrotik *</label>
+          <input value={form.equipamento_origem} onChange={e => set('equipamento_origem', e.target.value)} required placeholder="Ex: MK-BRAS-01" className="rounded-lg px-3 py-2" style={inputStyle} />
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Descrição</label>
@@ -152,7 +148,6 @@ function PoolForm({ initial, onSave, onCancel, instances }: {
 
 export default function CgnatPools() {
   const [pools, setPools]     = useState<CgnatPool[]>([]);
-  const [instances, setInstances] = useState<Input[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<CgnatPool | null>(null);
@@ -160,9 +155,7 @@ export default function CgnatPools() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [p, ins] = await Promise.all([fetchCgnatPools(), fetchInputs()]);
-      setPools(p);
-      setInstances(ins);
+      setPools(await fetchCgnatPools());
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, []);
@@ -191,8 +184,8 @@ export default function CgnatPools() {
   return (
     <div className="max-w-5xl mx-auto">
       <div className="title-row">
-        <h2>configuração<span className="accent"> / pools cgnat</span></h2>
-        <span className="meta">cálculo reverso de cgnat estático (mikrotik netmap)</span>
+        <h2>configuração<span className="accent"> / mikrotik cgnat</span></h2>
+        <span className="meta">cálculo reverso de cgnat estático mikrotik (netmap)</span>
       </div>
       <div className="px-6 pt-4 pb-8">
 
@@ -208,7 +201,7 @@ export default function CgnatPools() {
 
         {creating && (
           <div className="mb-6">
-            <PoolForm initial={emptyForm} onSave={handleCreate} onCancel={() => setCreating(false)} instances={instances} />
+            <PoolForm initial={emptyForm} onSave={handleCreate} onCancel={() => setCreating(false)} />
           </div>
         )}
 
@@ -226,7 +219,6 @@ export default function CgnatPools() {
               }}
               onSave={handleUpdate}
               onCancel={() => setEditing(null)}
-              instances={instances}
             />
           </div>
         )}
@@ -237,7 +229,7 @@ export default function CgnatPools() {
           <div className="rounded-xl p-8 flex flex-col items-center gap-3 text-center" style={{ background: 'var(--bg-card)', border: '1px dashed var(--border-subtle)' }}>
             <Calculator size={32} style={{ color: 'var(--text-muted)' }} />
             <p className="text-xs max-w-md" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', lineHeight: 1.6 }}>
-              Nenhum pool cadastrado. Configure um pool pra cada Mikrotik que usa CGNAT estático — o sistema vai calcular o IP privado na busca judicial a partir de IP público + porta, sem depender de logs.
+              Nenhum Mikrotik cadastrado. Use este cadastro para cada Mikrotik com CGNAT estático (netmap) — o sistema calcula o IP privado na busca judicial a partir de IP público + porta, sem depender de logs do roteador.
             </p>
           </div>
         ) : (
