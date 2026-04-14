@@ -12,12 +12,25 @@ export interface JwtUser {
 
 /**
  * Normalize any ISO-ish date string to ClickHouse DateTime64(3) literal:
- * "2026-04-14 11:50:00.000". Accepts "2026-04-14T11:50" (datetime-local),
- * full ISO "2026-04-14T11:50:00.000Z", and plain dates.
+ * "2026-04-14 11:50:00.000".
+ *
+ * Naive strings ("2026-04-14T11:50", sem Z/offset) são wall-clock já alinhados
+ * ao fuso do banco (collector grava com TZ_OFFSET_HOURS, default BRT -3).
+ * Não passamos por new Date() para evitar interpretação dependente do TZ do
+ * processo Node, que deslocaria a comparação em 3h.
  */
 function toClickhouseTs(value: string): string {
+  if (!value) return value;
+  const hasTz = /[zZ]|[+-]\d{2}:?\d{2}$/.test(value);
+  if (!hasTz) {
+    const [datePart, timePart = '00:00:00'] = value.split('T');
+    const [hms, msRaw = '000'] = timePart.split('.');
+    const [h = '00', m = '00', s = '00'] = hms.split(':');
+    const ms = (msRaw + '000').slice(0, 3);
+    return `${datePart} ${h.padStart(2, '0')}:${m.padStart(2, '0')}:${s.padStart(2, '0')}.${ms}`;
+  }
   const d = new Date(value);
-  if (isNaN(d.getTime())) return value; // let ClickHouse raise if truly invalid
+  if (isNaN(d.getTime())) return value;
   return d.toISOString().replace('T', ' ').replace('Z', '').slice(0, 23);
 }
 
@@ -135,6 +148,9 @@ export class LogsService {
     const tenantClause = tenantNames
       ? 'AND src.equipamento_origem IN {tenant_names:Array(String)}'
       : '';
+    const equipClause = dto.equipamento_origem
+      ? 'AND src.equipamento_origem = {equipamento_origem:String}'
+      : '';
 
     // Busca o cliente que estava usando ip_publico:porta dentro do período informado
     // Para BPA: porta_publica <= porta < porta_publica + tamanho_bloco
@@ -156,6 +172,7 @@ export class LogsService {
         AND src.timestamp >= {ts_inicio:DateTime64(3)}
         AND src.timestamp <= {ts_fim:DateTime64(3)}
         ${tenantClause}
+        ${equipClause}
       ORDER BY src.timestamp DESC
       LIMIT 50
     `;
@@ -167,15 +184,17 @@ export class LogsService {
       ts_fim:     toClickhouseTs(dto.data_fim),
     };
     if (tenantNames) params.tenant_names = tenantNames;
+    if (dto.equipamento_origem) params.equipamento_origem = dto.equipamento_origem;
 
     const rows = await this.clickhouse.query(sql, params);
 
     return {
       consulta: {
-        ip_publico:   dto.ip_publico,
-        porta:        dto.porta,
-        data_inicio:  dto.data_inicio,
-        data_fim:     dto.data_fim,
+        ip_publico:        dto.ip_publico,
+        porta:             dto.porta,
+        data_inicio:       dto.data_inicio,
+        data_fim:          dto.data_fim,
+        equipamento_origem: dto.equipamento_origem ?? null,
       },
       resultados: rows,
       total: rows.length,

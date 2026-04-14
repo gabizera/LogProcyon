@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Search, Shield, AlertCircle, CheckCircle2, Clock, User } from 'lucide-react';
-import api from '../api';
+import { useState, useEffect } from 'react';
+import { Search, AlertCircle, CheckCircle2, Clock, User } from 'lucide-react';
+import api, { fetchInputs, type Input } from '../api';
 
 interface JudicialResult {
   ip_privado: string;
@@ -15,16 +15,21 @@ interface JudicialResult {
 }
 
 interface JudicialResponse {
-  consulta: { ip_publico: string; porta: number; data_inicio: string; data_fim: string };
+  consulta: { ip_publico: string; porta: number; data_inicio: string; data_fim: string; equipamento_origem: string | null };
   resultados: JudicialResult[];
   total: number;
 }
 
 export default function JudicialSearch() {
-  const [form, setForm] = useState({ ip_publico: '', porta: '', data: '', hora_inicio: '00:00', hora_fim: '23:59' });
+  const [form, setForm] = useState({ ip_publico: '', porta: '', data: '', hora_inicio: '00:00', hora_fim: '23:59', equipamento_origem: '' });
   const [result, setResult] = useState<JudicialResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [instances, setInstances] = useState<Input[]>([]);
+
+  useEffect(() => {
+    fetchInputs().then(setInstances).catch(() => setInstances([]));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,14 +38,19 @@ export default function JudicialSearch() {
     setError(null);
     setResult(null);
     try {
-      const dataInicio = new Date(`${form.data}T${form.hora_inicio}:00`).toISOString();
-      const dataFim    = new Date(`${form.data}T${form.hora_fim}:59`).toISOString();
+      // Envia em formato local naive (sem Z) — o collector grava timestamps
+      // alinhados ao TZ_OFFSET_HOURS, não em UTC. Se chamássemos toISOString()
+      // aqui a string vira UTC e a comparação no ClickHouse fica deslocada
+      // pelo fuso do browser (3h em BRT).
+      const dataInicio = `${form.data}T${form.hora_inicio}:00`;
+      const dataFim    = `${form.data}T${form.hora_fim}:59`;
       const { data } = await api.get<JudicialResponse>('/logs/judicial', {
         params: {
           ip_publico:   form.ip_publico,
           porta:        parseInt(form.porta),
           data_inicio:  dataInicio,
           data_fim:     dataFim,
+          ...(form.equipamento_origem ? { equipamento_origem: form.equipamento_origem } : {}),
         },
       });
       setResult(data);
@@ -106,7 +116,27 @@ export default function JudicialSearch() {
           </div>
         </div>
 
-        {/* Row 2: Data + Hora Início + Hora Fim */}
+        {/* Row 2: Equipamento */}
+        <div className="grid grid-cols-1 gap-4 mb-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+              Equipamento
+            </label>
+            <select
+              value={form.equipamento_origem}
+              onChange={e => setForm(p => ({ ...p, equipamento_origem: e.target.value }))}
+              className="rounded-lg px-3 py-2"
+              style={inputStyle}
+            >
+              <option value="">Todos</option>
+              {instances.map(i => (
+                <option key={i.id} value={i.name}>{i.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Row 3: Data + Hora Início + Hora Fim */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>

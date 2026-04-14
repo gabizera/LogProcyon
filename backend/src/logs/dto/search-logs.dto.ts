@@ -73,6 +73,10 @@ export class JudicialQueryDto {
 
   @IsDateString()
   data_fim: string;
+
+  @IsOptional()
+  @IsString()
+  equipamento_origem?: string;
 }
 
 export class StatsQueryDto {
