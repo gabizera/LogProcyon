@@ -79,11 +79,13 @@ export interface AppConfig {
   tz_offset_hours: number;
   platform_name: string;
   retention_months: number;
+  ingest_ip: string;
 }
 
 export interface PublicConfig {
   platform_name: string;
   multi_tenant_mode: boolean;
+  ingest_ip: string;
 }
 
 // ── Stats ─────────────────────────────────────────────────────────────────────

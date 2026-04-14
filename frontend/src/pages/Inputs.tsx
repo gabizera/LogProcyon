@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Radio, Plus, Pencil, Trash2, X, Check, AlertCircle } from 'lucide-react';
-import { fetchInputs, createInput, updateInput, deleteInput, type Input } from '../api';
+import { fetchInputs, createInput, updateInput, deleteInput, fetchPublicConfig, type Input } from '../api';
 import { useAuth } from '../auth';
 
 const EQUIPMENT_TYPES = ['cisco', 'a10', 'nokia', 'hillstone', 'juniper', 'generic'];
@@ -25,8 +25,8 @@ const emptyForm = { name: '', equipment_type: 'cisco', protocol_type: 'netflow_v
 type FormData = typeof emptyForm;
 
 function InputForm({
-  initial, onSave, onCancel,
-}: { initial: FormData; onSave: (f: FormData) => Promise<void>; onCancel: () => void }) {
+  initial, onSave, onCancel, ingestIp,
+}: { initial: FormData; onSave: (f: FormData) => Promise<void>; onCancel: () => void; ingestIp: string }) {
   const [form, setForm] = useState<FormData>(initial);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
@@ -107,7 +107,7 @@ function InputForm({
             aponte o equipamento para
           </div>
           <div className="text-sm tabular-nums truncate" style={{ color: 'var(--signal)', fontFamily: 'var(--font-mono)' }}>
-            {window.location.hostname}:{form.port || '—'} <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>UDP</span>
+            {ingestIp || <span style={{ color: 'var(--text-muted)' }}>defina em Configurações</span>}{ingestIp ? `:${form.port || '—'}` : ''} <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>UDP</span>
           </div>
         </div>
       </div>
@@ -142,6 +142,11 @@ export default function Inputs() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Input | null>(null);
   const [error, setError]     = useState('');
+  const [ingestIp, setIngestIp] = useState('');
+
+  useEffect(() => {
+    fetchPublicConfig().then(cfg => setIngestIp(cfg.ingest_ip ?? '')).catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -195,7 +200,7 @@ export default function Inputs() {
 
       {(showForm) && (
         <div className="mb-5">
-          <InputForm initial={{ ...emptyForm }} onSave={handleCreate} onCancel={() => setShowForm(false)} />
+          <InputForm initial={{ ...emptyForm }} onSave={handleCreate} onCancel={() => setShowForm(false)} ingestIp={ingestIp} />
         </div>
       )}
 
@@ -229,6 +234,7 @@ export default function Inputs() {
                   initial={{ name: inp.name, equipment_type: inp.equipment_type, protocol_type: inp.protocol_type, source_ip: inp.source_ip, port: inp.port, description: inp.description, enabled: inp.enabled }}
                   onSave={handleUpdate}
                   onCancel={() => setEditing(null)}
+                  ingestIp={ingestIp}
                 />
               ) : (
                 <div className="rounded-xl px-5 py-4 flex items-center gap-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>

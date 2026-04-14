@@ -138,6 +138,24 @@ export default function SettingsPage() {
             </span>
           </div>
 
+          {/* Ingest IP */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+              IP Público de Ingestão
+            </label>
+            <input
+              type="text"
+              value={form.ingest_ip ?? ''}
+              onChange={e => setForm(p => ({ ...p, ingest_ip: e.target.value }))}
+              placeholder="Ex: 185.137.92.31"
+              className="rounded-lg px-3 py-2"
+              style={inputStyle}
+            />
+            <span className="text-[10px]" style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
+              Endereço público do servidor que recebe NetFlow/syslog dos equipamentos. Aparece no hint da aba Inputs.
+            </span>
+          </div>
+
           {/* Save button */}
           <div className="flex items-center gap-3 pt-2">
             <button

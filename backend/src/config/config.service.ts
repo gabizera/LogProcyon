@@ -6,12 +6,14 @@ export interface AppConfig {
   tz_offset_hours: number;
   platform_name: string;
   retention_months: number;
+  ingest_ip: string;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
   tz_offset_hours: -3,
   platform_name: 'LogProcyon',
   retention_months: 15,
+  ingest_ip: '',
 };
 
 export const MULTI_TENANT_MODE =

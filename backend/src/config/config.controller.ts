@@ -23,6 +23,10 @@ class UpdateConfigDto {
   @Min(1)
   @Max(60)
   retention_months?: number;
+
+  @IsOptional()
+  @IsString()
+  ingest_ip?: string;
 }
 
 @Controller('config')
@@ -41,6 +45,7 @@ export class ConfigController {
     return {
       platform_name: config.platform_name,
       multi_tenant_mode: MULTI_TENANT_MODE,
+      ingest_ip: config.ingest_ip ?? '',
     };
   }
 
