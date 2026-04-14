@@ -11,14 +11,16 @@ import UsersPage     from './pages/Users';
 import SettingsPage  from './pages/Settings';
 import StoragePage   from './pages/Storage';
 
-const nav = [
-  { to: '/',         label: 'DASHBOARD'     },
-  { to: '/logs',     label: 'LOGS'          },
-  { to: '/judicial', label: 'JUDICIAL'      },
-  { to: '/storage',  label: 'ARMAZENAMENTO' },
-  { to: '/inputs',   label: 'INPUTS'        },
-  { to: '/users',    label: 'USUÁRIOS'      },
-  { to: '/settings', label: 'CONFIG'        },
+// Cada item declara quais roles podem enxergá-lo no nav.
+// Admin ignora tudo e vê sempre, outros perfis filtram por roles.
+const nav: { to: string; label: string; roles: string[] }[] = [
+  { to: '/',         label: 'DASHBOARD',     roles: ['admin', 'operator', 'viewer'] },
+  { to: '/logs',     label: 'LOGS',          roles: ['admin', 'operator', 'viewer'] },
+  { to: '/judicial', label: 'JUDICIAL',      roles: ['admin', 'operator']           },
+  { to: '/storage',  label: 'ARMAZENAMENTO', roles: ['admin', 'operator', 'viewer'] },
+  { to: '/inputs',   label: 'INPUTS',        roles: ['admin', 'operator', 'viewer'] },
+  { to: '/users',    label: 'USUÁRIOS',      roles: ['admin']                       },
+  { to: '/settings', label: 'CONFIG',        roles: ['admin']                       },
 ];
 
 export default function App() {
@@ -85,7 +87,7 @@ export default function App() {
         className="flex items-center gap-2 px-6 hairline-b"
         style={{ height: 'var(--nav-h)', background: 'var(--bg-0)' }}
       >
-        {nav.map(item => {
+        {nav.filter(item => item.roles.includes(user.role)).map(item => {
           const isActive = item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to);
           return (
             <NavLink key={item.to} to={item.to} className={`topnav-link ${isActive ? 'active' : ''}`}>
@@ -100,13 +102,33 @@ export default function App() {
         <Routes>
           <Route path="/"          element={<Dashboard />} />
           <Route path="/logs"      element={<LogSearch />} />
-          <Route path="/judicial"  element={<JudicialSearch />} />
+          <Route path="/judicial"  element={<RoleGate role={user.role} allow={['admin', 'operator']}><JudicialSearch /></RoleGate>} />
           <Route path="/storage"   element={<StoragePage />} />
           <Route path="/inputs"    element={<Inputs />} />
-          <Route path="/users"     element={<UsersPage />} />
-          <Route path="/settings"  element={<SettingsPage />} />
+          <Route path="/users"     element={<RoleGate role={user.role} allow={['admin']}><UsersPage /></RoleGate>} />
+          <Route path="/settings"  element={<RoleGate role={user.role} allow={['admin']}><SettingsPage /></RoleGate>} />
         </Routes>
       </main>
+    </div>
+  );
+}
+
+function RoleGate({ role, allow, children }: { role: string; allow: string[]; children: React.ReactNode }) {
+  if (allow.includes(role)) return <>{children}</>;
+  return (
+    <div className="max-w-md mx-auto">
+      <div className="title-row">
+        <h2>acesso<span className="accent"> / negado</span></h2>
+        <span className="meta">perfil {role.toUpperCase()} não tem permissão</span>
+      </div>
+      <div className="px-6 pt-8">
+        <div className="hairline p-6" style={{ background: 'var(--bg-1)' }}>
+          <p className="text-xs" style={{ color: 'var(--ink-2)', fontFamily: 'var(--font-mono)', lineHeight: 1.7 }}>
+            Esta área só está disponível para perfis: <strong style={{ color: 'var(--signal)' }}>{allow.join(', ').toUpperCase()}</strong>.
+            Fale com um administrador se você precisar de acesso.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
