@@ -256,11 +256,12 @@ input:focus, select:focus, textarea:focus {
   font-size: 9px;
 }
 .statusbar .k {
-  color: var(--ink-4);
+  color: var(--ink-2);
   margin-right: 6px;
   text-transform: uppercase;
   letter-spacing: 0.16em;
   font-size: 9px;
+  font-weight: 500;
 }
 .statusbar b {
   color: var(--ink-0);

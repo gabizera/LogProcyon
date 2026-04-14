@@ -208,7 +208,7 @@ export default function Dashboard() {
           </span>
         </div>
         <TimelinePlot points={volume} />
-        <div className="flex justify-between mt-2 tabular" style={{ fontSize: 9, color: 'var(--ink-4)', letterSpacing: '0.08em' }}>
+        <div className="flex justify-between mt-2 tabular" style={{ fontSize: 9, color: 'var(--ink-2)', letterSpacing: '0.08em' }}>
           <span>−24h</span>
           <span>−18h</span>
           <span>−12h</span>
