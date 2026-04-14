@@ -108,7 +108,7 @@ export default function Dashboard() {
                 value={selectedInstance}
                 onChange={e => setSelectedInstance(e.target.value)}
                 className="topnav-link cursor-pointer"
-                style={{ background: 'transparent' }}
+                style={{ background: 'transparent', color: 'var(--signal)', borderColor: 'var(--signal)' }}
               >
                 <option value="">TODAS AS FONTES</option>
                 {inputs.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
@@ -129,7 +129,7 @@ export default function Dashboard() {
       <div className="readout" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
         <div className="cell">
           <div className="k">TOTAL</div>
-          <div className="v signal tabular">{total.toLocaleString('pt-BR')}</div>
+          <div className="v tabular">{total.toLocaleString('pt-BR')}</div>
           <div className="d">eventos capturados</div>
         </div>
         <div className="cell">
