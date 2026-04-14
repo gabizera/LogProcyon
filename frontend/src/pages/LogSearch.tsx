@@ -51,8 +51,8 @@ export default function LogSearch() {
   return (
     <div>
       <div className="title-row">
-        <h2>monitor<span className="accent"> / query</span></h2>
-        <span className="meta">busca de logs nat · cgnat · bpa</span>
+        <h2>monitoramento<span className="accent"> / logs</span></h2>
+        <span className="meta">busca e filtro de registros</span>
       </div>
       <div className="px-6 pt-4 pb-8">
       <FilterBar onApply={handleApply} onClear={handleClear} initial={currentFilters} />

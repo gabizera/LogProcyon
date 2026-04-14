@@ -63,8 +63,8 @@ export default function SettingsPage() {
   return (
     <div className="max-w-3xl">
       <div className="title-row">
-        <h2>system<span className="accent"> / conf</span></h2>
-        <span className="meta">timezone · nome da plataforma · retenção</span>
+        <h2>sistema<span className="accent"> / configurações</span></h2>
+        <span className="meta">fuso horário · nome da plataforma · retenção</span>
       </div>
       <div className="px-6 pt-4 pb-8">
 

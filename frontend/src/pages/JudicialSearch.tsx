@@ -62,7 +62,7 @@ export default function JudicialSearch() {
   return (
     <div className="max-w-4xl">
       <div className="title-row">
-        <h2>monitor<span className="accent"> / forensic</span></h2>
+        <h2>monitoramento<span className="accent"> / judicial</span></h2>
         <span className="meta">identifica o assinante por ip público + porta + período</span>
       </div>
       <div className="px-6 pt-4 pb-8">

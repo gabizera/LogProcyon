@@ -64,11 +64,11 @@ export default function StoragePage() {
   return (
     <div className="max-w-6xl">
       <div className="title-row">
-        <h2>monitor<span className="accent"> / storage</span></h2>
+        <h2>monitoramento<span className="accent"> / armazenamento</span></h2>
         <span className="meta">volume de logs · uso de disco · retenção</span>
         <div className="right">
           <button onClick={load} className="topnav-link cursor-pointer flex items-center gap-1.5" style={{ background: 'transparent' }}>
-            <RefreshCw size={10} /> REFRESH
+            <RefreshCw size={10} /> ATUALIZAR
           </button>
         </div>
       </div>

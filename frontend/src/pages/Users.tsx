@@ -337,7 +337,7 @@ export default function UsersPage() {
   return (
     <div className="max-w-5xl">
       <div className="title-row">
-        <h2>system<span className="accent"> / users</span></h2>
+        <h2>sistema<span className="accent"> / usuários</span></h2>
         <span className="meta">gerenciamento de acessos</span>
         {!showForm && (
           <div className="right">

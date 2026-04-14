@@ -155,8 +155,8 @@ export default function Inputs() {
   return (
     <div className="max-w-5xl">
       <div className="title-row">
-        <h2>sources<span className="accent"> / inputs</span></h2>
-        <span className="meta">cisco · a10 · nokia · hillstone · juniper</span>
+        <h2>sistema<span className="accent"> / inputs</span></h2>
+        <span className="meta">fontes de log configuradas</span>
         {!showForm && !editing && (
           <div className="right">
             <button onClick={() => setShowForm(true)} className="topnav-link cursor-pointer flex items-center gap-1.5" style={{ background: 'transparent' }}>
