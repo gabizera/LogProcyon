@@ -277,6 +277,7 @@ input:focus, select:focus, textarea:focus {
 .statusbar .right {
   margin-left: auto;
   display: flex;
+  align-items: center;
   gap: 20px;
   color: var(--ink-3);
 }
