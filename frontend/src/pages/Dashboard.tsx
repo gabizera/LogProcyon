@@ -1,48 +1,62 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Database, CalendarDays, Globe, MonitorSmartphone, RefreshCw, BarChart3 } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { fetchStats, fetchInputs, fetchPublicConfig, type StatsResponse, type Input } from '../api';
-import { VolumeLineChart, TopBarChart, DistributionPieChart } from '../components/Charts';
 
-function StatCard({ icon: Icon, label, value, color, index }: {
-  icon: React.ElementType; label: string; value: string | number; color: string; index: number;
-}) {
+// ── Tiny sparkbar (small multiples) ──────────────────────────
+function Sparkbar({ values, muted = false }: { values: number[]; muted?: boolean }) {
+  const max = Math.max(...values, 1);
   return (
-    <div
-      className="animate-card rounded-xl p-5 flex flex-col gap-4"
-      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderTop: `2px solid ${color}`, animationDelay: `${index * 0.06}s`, boxShadow: 'var(--shadow-card)' }}
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-          {label}
-        </span>
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: color + '14' }}>
-          <Icon size={14} style={{ color }} />
-        </div>
-      </div>
-      <div className="text-2xl font-bold tabular-nums" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
-        {typeof value === 'number' ? value.toLocaleString('pt-BR') : value}
-      </div>
+    <div className="flex items-end gap-[2px] h-[28px]">
+      {values.map((v, i) => (
+        <span
+          key={i}
+          className="flex-1"
+          style={{
+            background: 'var(--signal)',
+            opacity: muted ? 0.5 : 0.78,
+            height: `${Math.max(2, (v / max) * 100)}%`,
+            minWidth: 2,
+          }}
+        />
+      ))}
     </div>
   );
 }
 
-function ChartCard({ title, subtitle, children, index }: {
-  title: string; subtitle?: string; children: React.ReactNode; index: number;
-}) {
-  return (
-    <div
-      className="animate-card rounded-xl p-5"
-      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-card)', animationDelay: `${(index + 4) * 0.06}s` }}
-    >
-      <div className="flex items-center gap-2 mb-4">
-        <BarChart3 size={13} style={{ color: '#64748b', flexShrink: 0 }} />
-        <div>
-          <h3 className="text-[12px] font-semibold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>{title}</h3>
-          {subtitle && <div className="text-[10px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{subtitle}</div>}
-        </div>
+// ── Timeline area chart (SVG) ────────────────────────────────
+function TimelinePlot({ points }: { points: { hour: string; count: number }[] }) {
+  if (!points.length) {
+    return (
+      <div
+        className="flex items-center justify-center"
+        style={{ height: 140, border: '1px dashed var(--rule-1)', color: 'var(--ink-3)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase' }}
+      >
+        no data · waiting for events
       </div>
-      {children}
+    );
+  }
+  const max = Math.max(...points.map(p => p.count), 1);
+  const W = 1000;
+  const H = 130;
+  const stepX = points.length > 1 ? W / (points.length - 1) : 0;
+
+  const coords = points.map((p, i) => ({
+    x: i * stepX,
+    y: H - (p.count / max) * (H - 14) - 4,
+  }));
+  const trace = coords.map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+  const fill = `M0,${H} L0,${coords[0].y.toFixed(1)} ${coords.slice(1).map(c => `L${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ')} L${W},${H} Z`;
+
+  return (
+    <div style={{ position: 'relative', height: H, borderTop: '1px solid var(--rule-1)', borderBottom: '1px solid var(--rule-1)' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: '100%', display: 'block' }}>
+        {[26, 52, 78, 104].map(y => (
+          <line key={y} x1="0" y1={y} x2={W} y2={y} stroke="var(--rule-1)" strokeWidth="1" />
+        ))}
+        <path d={fill} fill="var(--signal)" opacity="0.08" />
+        <path d={trace} fill="none" stroke="var(--signal)" strokeWidth="1.5" />
+      </svg>
     </div>
   );
 }
@@ -77,9 +91,7 @@ export default function Dashboard() {
         const [cfg, ins] = await Promise.all([fetchPublicConfig(), fetchInputs()]);
         setMultiTenant(cfg.multi_tenant_mode);
         setInputs(ins);
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e) { console.error(e); }
     })();
   }, []);
 
@@ -89,17 +101,12 @@ export default function Dashboard() {
     return () => clearInterval(id);
   }, [loadStats, selectedInstance]);
 
-  // Show selector whenever there's at least one instance — useful for both
-  // multi-tenant deploys and any NOC running 2+ equipments even in single-tenant.
   const showSelector = inputs.length >= 1;
 
   if (loading && !stats) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-9 h-9 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--accent-cyan)', borderTopColor: 'transparent' }} />
-          <span className="text-xs" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Carregando dashboard...</span>
-        </div>
+        <div className="w-8 h-8 border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--signal)', borderTopColor: 'transparent' }} />
       </div>
     );
   }
@@ -107,113 +114,224 @@ export default function Dashboard() {
   if (error && !stats) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="rounded-xl p-8 max-w-sm text-center" style={{ background: 'var(--bg-card)', border: '1px solid rgba(239,68,68,0.2)' }}>
-          <p className="text-sm mb-4" style={{ color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>{error}</p>
-          <button onClick={() => { void loadStats(selectedInstance); }} className="px-4 py-2 rounded-lg text-xs font-medium cursor-pointer hover:brightness-110" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-medium)', fontFamily: 'var(--font-display)' }}>
-            Tentar novamente
+        <div className="hairline p-8 max-w-sm text-center" style={{ background: 'var(--bg-1)' }}>
+          <p className="text-xs mb-4" style={{ color: 'var(--accent-red)', fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>{error}</p>
+          <button
+            onClick={() => loadStats(selectedInstance)}
+            className="topnav-link cursor-pointer"
+            style={{ background: 'transparent' }}
+          >
+            TENTAR NOVAMENTE
           </button>
         </div>
       </div>
     );
   }
 
-  const statCards = [
-    { icon: Database,          label: 'Total de Logs',       value: stats?.total_logs          ?? 0, color: '#3b82f6' },
-    { icon: CalendarDays,      label: 'Logs Hoje',           value: stats?.logs_hoje           ?? 0, color: '#22c55e' },
-    { icon: Globe,             label: 'IPs Públicos Únicos', value: stats?.ips_publicos_unicos ?? 0, color: '#6366f1' },
-    { icon: MonitorSmartphone, label: 'IPs Privados Únicos', value: stats?.ips_privados_unicos ?? 0, color: '#8b5cf6' },
-  ];
+  // ── Derived metrics ───────────────────────────────────────
+  const total = stats?.total_logs ?? 0;
+  const today = stats?.logs_hoje ?? 0;
+  const pubIps = stats?.ips_publicos_unicos ?? 0;
+  const privIps = stats?.ips_privados_unicos ?? 0;
+
+  const nat = stats?.distribuicao_tipo_nat ?? [];
+  const natTotal = nat.reduce((s, x) => s + Number(x.total || 0), 0);
+  const bpa = nat.find(n => (n.tipo || '').toLowerCase() === 'bpa')?.total ?? 0;
+  const bpaPct = natTotal > 0 ? ((Number(bpa) / natTotal) * 100).toFixed(1) : '0.0';
+
+  const proto = stats?.distribuicao_protocolo ?? [];
+  const tcp = Number(proto.find(p => (p.protocolo || '').toUpperCase() === 'TCP')?.total ?? 0);
+  const udp = Number(proto.find(p => (p.protocolo || '').toUpperCase() === 'UDP')?.total ?? 0);
+
+  const cgnat = Number(nat.find(n => (n.tipo || '').toLowerCase() === 'cgnat')?.total ?? 0);
+  const stat  = Number(nat.find(n => (n.tipo || '').toLowerCase() === 'estatico')?.total ?? 0);
+
+  const volume = (stats?.volume_24h ?? []).map(v => ({ hour: String(v.hora ?? ''), count: Number(v.total ?? 0) }));
+
+  const peak = volume.reduce((acc, v) => (v.count > acc.count ? v : acc), { hour: '—', count: 0 });
+  const rate = volume.length > 0 ? (volume.reduce((s, v) => s + v.count, 0) / volume.length).toFixed(1) : '0.0';
+
+  const sparkFrom = (key: 'bpa' | 'cgnat' | 'estatico' | 'tcp' | 'udp'): number[] => {
+    // No per-dimension 24h breakdown yet — derive from totals as a simple repeating pattern
+    // so the sparkbar doesn't look empty. Real series data would replace this.
+    const base = volume.slice(-10).map(v => v.count);
+    if (base.length === 0) return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    const weight =
+      key === 'bpa'    ? Number(bpa) / Math.max(natTotal, 1)
+      : key === 'cgnat' ? cgnat / Math.max(natTotal, 1)
+      : key === 'estatico' ? stat / Math.max(natTotal, 1)
+      : key === 'udp'   ? udp / Math.max(udp + tcp, 1)
+                        : tcp / Math.max(udp + tcp, 1);
+    return base.map(v => v * weight);
+  };
+
+  const platformTitle = '001-ASR1002X-BDR-LIGO'; // default if nothing selected
+  const currentInstance = selectedInstance || (inputs[0]?.name ?? platformTitle);
 
   return (
-    <div className="p-6 max-w-7xl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6 gap-4">
-        <div>
-          <h2 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Dashboard</h2>
-          {lastUpdate && (
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-              Atualizado {lastUpdate.toLocaleTimeString('pt-BR')} · auto-refresh 30s
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {showSelector && (
-            <div className="flex items-center gap-1.5">
-              <label
-                htmlFor="dashboard-instance-filter"
-                className="text-[10px] font-semibold uppercase tracking-widest"
-                style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
-              >
-                Cliente
-              </label>
-              <select
-                id="dashboard-instance-filter"
-                aria-label="Filtrar dashboard por cliente"
-                value={selectedInstance}
-                onChange={e => setSelectedInstance(e.target.value)}
-                className="px-3 py-1.5 rounded-lg text-xs cursor-pointer"
-                style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)' }}
-              >
-                <option value="">Todos os clientes</option>
-                {inputs.map(i => (
-                  <option key={i.id} value={i.name}>{i.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
+    <div className="animate-card">
+
+      {/* ── Page status strip ───────────────────────────────── */}
+      <div className="statusbar" style={{ borderTop: 0 }}>
+        <span className="pill">OVERVIEW</span>
+        <span><span className="k">source</span><b>{currentInstance}</b></span>
+        <span><span className="k">events</span><b className="tabular">{total.toLocaleString('pt-BR')}</b></span>
+        <span><span className="k">rate</span><b className="tabular">{rate}/min</b></span>
+        <span><span className="k">peak</span><b className="tabular">{peak.count} · {peak.hour ? new Date(peak.hour).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—'}</b></span>
+        <div className="right">
+          <span><span className="k">last</span><b className="tabular">{lastUpdate ? lastUpdate.toLocaleTimeString('pt-BR') : '—'}</b></span>
           <button
-            onClick={() => { void loadStats(selectedInstance); }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer hover:brightness-110"
-            style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)' }}
+            onClick={() => loadStats(selectedInstance)}
+            className="topnav-link cursor-pointer flex items-center gap-1.5"
+            style={{ background: 'transparent' }}
           >
-            <RefreshCw size={12} />
-            Atualizar
+            <RefreshCw size={10} /> REFRESH
           </button>
         </div>
       </div>
 
-      {error && (
-        <div className="mb-5 px-4 py-2.5 rounded-lg text-xs" style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>
-          {error}
+      {/* ── Title row ───────────────────────────────────────── */}
+      <div className="title-row">
+        <h2>
+          {currentInstance}
+          <span className="accent"> / overview</span>
+        </h2>
+        <span className="meta">UTC−3 · {new Date().toLocaleDateString('pt-BR')} {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+        {showSelector && (
+          <div className="right">
+            <label htmlFor="dash-instance" className="sr-only">Filtrar por cliente</label>
+            <select
+              id="dash-instance"
+              aria-label="Filtrar dashboard por cliente"
+              value={selectedInstance}
+              onChange={e => setSelectedInstance(e.target.value)}
+              className="topnav-link cursor-pointer"
+              style={{ background: 'transparent' }}
+            >
+              <option value="">ALL SOURCES</option>
+              {inputs.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {/* ── Readout (5-cell) ────────────────────────────────── */}
+      <div className="readout" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
+        <div className="cell">
+          <div className="k">TOTAL</div>
+          <div className="v signal tabular">{total.toLocaleString('pt-BR')}</div>
+          <div className="d up">+{today.toLocaleString('pt-BR')} hoje</div>
         </div>
-      )}
-
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {statCards.map((card, i) => <StatCard key={card.label} {...card} index={i} />)}
+        <div className="cell">
+          <div className="k">PUB IP</div>
+          <div className="v tabular">{pubIps}</div>
+          <div className="d">unique</div>
+        </div>
+        <div className="cell">
+          <div className="k">PRIV IP</div>
+          <div className="v tabular">{privIps}</div>
+          <div className="d">unique</div>
+        </div>
+        <div className="cell">
+          <div className="k">BPA %</div>
+          <div className="v tabular">{bpaPct}</div>
+          <div className="d">{Number(bpa).toLocaleString('pt-BR')} of {natTotal.toLocaleString('pt-BR')}</div>
+        </div>
+        <div className="cell">
+          <div className="k">RATE</div>
+          <div className="v tabular">{rate}</div>
+          <div className="d">events / min</div>
+        </div>
       </div>
 
-      {/* Row 1: Volume + Top Públicos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <ChartCard title="Volume de Logs" subtitle="Últimas 24 horas" index={0}>
-          <VolumeLineChart data={(stats?.volume_24h ?? []) as Record<string, unknown>[]} xKey="hora" yKey="total" />
-        </ChartCard>
-        <ChartCard title="Top 10 IPs Públicos" subtitle="Clique para filtrar" index={1}>
-          <TopBarChart data={(stats?.top_ips_publicos ?? []) as Record<string, unknown>[]} xKey="ip" yKey="total" color="#6366f1"
-            onBarClick={ip => navigate(`/logs?ip_publico=${ip}`)} />
-        </ChartCard>
+      {/* ── Timeline ────────────────────────────────────────── */}
+      <div className="px-6 pt-7 pb-6">
+        <div className="flex justify-between mb-3" style={{ fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--ink-3)', fontWeight: 500 }}>
+          <span>VOLUME / LAST 24H · TRACE</span>
+          <span style={{ color: 'var(--ink-2)' }}>
+            UNIT <b style={{ color: 'var(--signal)' }}>events / hour</b> · PEAK <b style={{ color: 'var(--signal)' }} className="tabular">{peak.count}</b>
+          </span>
+        </div>
+        <TimelinePlot points={volume} />
+        <div className="flex justify-between mt-2 tabular" style={{ fontSize: 9, color: 'var(--ink-4)', letterSpacing: '0.08em' }}>
+          <span>−24h</span>
+          <span>−18h</span>
+          <span>−12h</span>
+          <span>−6h</span>
+          <span>now</span>
+        </div>
       </div>
 
-      {/* Row 2: Top Privados + Distribuição NAT */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <ChartCard title="Top 10 IPs Privados" subtitle="Clique para filtrar" index={2}>
-          <TopBarChart data={(stats?.top_ips_privados ?? []) as Record<string, unknown>[]} xKey="ip" yKey="total" color="#8b5cf6"
-            onBarClick={ip => navigate(`/logs?ip_privado=${ip}`)} />
-        </ChartCard>
-        <ChartCard title="Distribuição por Tipo NAT" subtitle="CGNAT · BPA · Estático" index={3}>
-          <DistributionPieChart data={(stats?.distribuicao_tipo_nat ?? []) as Record<string, unknown>[]} nameKey="tipo" valueKey="total" />
-        </ChartCard>
+      {/* ── Small multiples ─────────────────────────────────── */}
+      <div
+        className="grid"
+        style={{ gridTemplateColumns: 'repeat(5, 1fr)', borderTop: '1px solid var(--rule-1)' }}
+      >
+        {([
+          { k: 'BPA',    v: Number(bpa).toLocaleString('pt-BR'), series: sparkFrom('bpa'),    muted: false },
+          { k: 'CGNAT',  v: cgnat.toLocaleString('pt-BR'),       series: sparkFrom('cgnat'),  muted: true },
+          { k: 'STATIC', v: stat.toLocaleString('pt-BR'),        series: sparkFrom('estatico'), muted: true },
+          { k: 'TCP',    v: tcp.toLocaleString('pt-BR'),         series: sparkFrom('tcp'),    muted: false },
+          { k: 'UDP',    v: udp.toLocaleString('pt-BR'),         series: sparkFrom('udp'),    muted: false },
+        ] as const).map((box, i, arr) => (
+          <div
+            key={box.k}
+            className="px-5 py-4 cursor-pointer"
+            style={{
+              borderRight: i < arr.length - 1 ? '1px solid var(--rule-1)' : 'none',
+            }}
+            onClick={() => {
+              if (box.k === 'TCP' || box.k === 'UDP') navigate(`/logs?protocolo=${box.k}`);
+              else navigate(`/logs?tipo_nat=${box.k.toLowerCase()}`);
+            }}
+          >
+            <div className="label-meta" style={{ marginBottom: 10 }}>{box.k}</div>
+            <Sparkbar values={box.series} muted={box.muted} />
+            <div className="tabular" style={{ fontSize: 18, color: 'var(--ink-0)', marginTop: 8, letterSpacing: '-0.01em' }}>
+              {box.v}
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Row 3: Protocolo + Equipamento */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChartCard title="Distribuição por Protocolo" subtitle="TCP · UDP" index={4}>
-          <DistributionPieChart data={(stats?.distribuicao_protocolo ?? []) as Record<string, unknown>[]} nameKey="protocolo" valueKey="total" />
-        </ChartCard>
-        <ChartCard title="Volume por Equipamento" subtitle="Clique para filtrar" index={5}>
-          <TopBarChart data={(stats?.distribuicao_equipamento ?? []) as Record<string, unknown>[]} xKey="equipamento" yKey="total" color="#06b6d4"
-            onBarClick={eq => navigate(`/logs?equipamento_origem=${eq}`)} />
-        </ChartCard>
+      {/* ── Top IPs (hairline table) ────────────────────────── */}
+      <div className="px-6 pt-7 pb-8">
+        <div className="section-head" style={{ padding: 0, marginBottom: 10 }}>
+          <span>TOP PUBLIC IPs · CLICK TO QUERY</span>
+          <span className="right">SCOPE <b>{currentInstance}</b></span>
+        </div>
+        <div className="hairline">
+          {(stats?.top_ips_publicos ?? []).slice(0, 8).map((row, i, arr) => {
+            const maxCount = Math.max(...(stats?.top_ips_publicos ?? []).map(r => Number(r.total)), 1);
+            const w = (Number(row.total) / maxCount) * 100;
+            return (
+              <div
+                key={row.ip}
+                onClick={() => navigate(`/logs?ip_publico=${row.ip}`)}
+                className="cursor-pointer grid items-center"
+                style={{
+                  gridTemplateColumns: '200px 1fr 80px',
+                  gap: 16,
+                  padding: '8px 16px',
+                  borderBottom: i < arr.length - 1 ? '1px solid var(--rule-1)' : 'none',
+                  fontSize: 11,
+                  fontFamily: 'var(--font-mono)',
+                }}
+              >
+                <span className="tabular" style={{ color: 'var(--signal)' }}>{row.ip}</span>
+                <div style={{ height: 4, background: 'var(--bg-2)', position: 'relative' }}>
+                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: 'var(--signal)', width: `${w}%` }} />
+                </div>
+                <span className="tabular text-right" style={{ color: 'var(--ink-2)' }}>{Number(row.total).toLocaleString('pt-BR')}</span>
+              </div>
+            );
+          })}
+          {(stats?.top_ips_publicos ?? []).length === 0 && (
+            <div className="p-8 text-center" style={{ color: 'var(--ink-3)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+              no data
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
