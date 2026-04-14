@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nest
 import { ClickhouseService } from '../clickhouse/clickhouse.service';
 import { SearchLogsDto, StatsQueryDto, JudicialQueryDto } from './dto/search-logs.dto';
 import { InputsService } from '../inputs/inputs.service';
+import { CgnatPoolsService } from '../cgnat-pools/cgnat-pools.service';
 import { MULTI_TENANT_MODE } from '../config/config.service';
 
 export interface JwtUser {
@@ -41,6 +42,7 @@ export class LogsService {
   constructor(
     private readonly clickhouse: ClickhouseService,
     private readonly inputsService: InputsService,
+    private readonly cgnatPoolsService: CgnatPoolsService,
   ) {}
 
   /**
@@ -188,6 +190,42 @@ export class LogsService {
 
     const rows = await this.clickhouse.query(sql, params);
 
+    // Fallback: se não achou nada nos logs reais e o usuário escolheu um
+    // equipamento com pool CGNAT estático (Mikrotik), calcula matematicamente
+    // o assinante a partir dos parâmetros do pool.
+    let staticResult: Record<string, unknown> | null = null;
+    if (rows.length === 0 && dto.equipamento_origem) {
+      const pool = this.cgnatPoolsService.findByEquipamento(dto.equipamento_origem);
+      if (pool) {
+        try {
+          const calc = this.cgnatPoolsService.lookup(
+            dto.equipamento_origem,
+            dto.ip_publico,
+            dto.porta,
+          );
+          staticResult = {
+            ip_privado:         calc.ip_privado,
+            ip_publico:         calc.ip_publico,
+            porta_publica:      calc.porta_min,
+            tamanho_bloco:      calc.porta_max - calc.porta_min + 1,
+            porta_fim:          calc.porta_max,
+            protocolo:          'tcp/udp',
+            tipo_nat:           'static_pool',
+            equipamento_origem: calc.equipamento_origem,
+            timestamp:          dto.data_inicio,
+            chain_index:        calc.chain_index,
+            source:             'static_pool',
+          };
+        } catch (err) {
+          // Pool cadastrado mas o IP/porta caíram fora do range — devolve vazio
+          // junto com a dica no frontend.
+          this.logger.warn(`CGNAT lookup failed: ${(err as Error).message}`);
+        }
+      }
+    }
+
+    const resultados = staticResult ? [staticResult] : rows;
+
     return {
       consulta: {
         ip_publico:        dto.ip_publico,
@@ -196,8 +234,9 @@ export class LogsService {
         data_fim:          dto.data_fim,
         equipamento_origem: dto.equipamento_origem ?? null,
       },
-      resultados: rows,
-      total: rows.length,
+      resultados,
+      total: resultados.length,
+      source: staticResult ? 'static_pool' : 'logs',
     };
   }
 

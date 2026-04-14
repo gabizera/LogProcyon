@@ -11,6 +11,7 @@ import Inputs        from './pages/Inputs';
 import UsersPage     from './pages/Users';
 import SettingsPage  from './pages/Settings';
 import StoragePage   from './pages/Storage';
+import CgnatPools    from './pages/CgnatPools';
 
 // Cada item declara quais roles podem enxergá-lo no nav.
 // Admin ignora tudo e vê sempre, outros perfis filtram por roles.
@@ -33,13 +34,14 @@ const nav: NavItem[] = [
   },
   {
     label: 'CONFIGURAÇÃO',
-    match: ['/inputs', '/storage', '/users', '/settings'],
+    match: ['/inputs', '/storage', '/users', '/settings', '/cgnat-pools'],
     roles: ['admin', 'operator', 'viewer'],
     children: [
-      { to: '/inputs',   label: 'INPUTS',        roles: ['admin', 'operator', 'viewer'] },
-      { to: '/storage',  label: 'ARMAZENAMENTO', roles: ['admin', 'operator', 'viewer'] },
-      { to: '/users',    label: 'USUÁRIOS',      roles: ['admin']                       },
-      { to: '/settings', label: 'CONFIG',        roles: ['admin']                       },
+      { to: '/inputs',      label: 'INPUTS',        roles: ['admin', 'operator', 'viewer'] },
+      { to: '/cgnat-pools', label: 'POOLS CGNAT',   roles: ['admin', 'operator']           },
+      { to: '/storage',     label: 'ARMAZENAMENTO', roles: ['admin', 'operator', 'viewer'] },
+      { to: '/users',       label: 'USUÁRIOS',      roles: ['admin']                       },
+      { to: '/settings',    label: 'CONFIG',        roles: ['admin']                       },
     ],
   },
 ];
@@ -140,6 +142,7 @@ export default function App() {
           <Route path="/judicial"  element={<RoleGate role={user.role} allow={['admin', 'operator']}><JudicialSearch /></RoleGate>} />
           <Route path="/storage"   element={<StoragePage />} />
           <Route path="/inputs"    element={<Inputs />} />
+          <Route path="/cgnat-pools" element={<RoleGate role={user.role} allow={['admin', 'operator']}><CgnatPools /></RoleGate>} />
           <Route path="/users"     element={<RoleGate role={user.role} allow={['admin']}><UsersPage /></RoleGate>} />
           <Route path="/settings"  element={<RoleGate role={user.role} allow={['admin']}><SettingsPage /></RoleGate>} />
         </Routes>

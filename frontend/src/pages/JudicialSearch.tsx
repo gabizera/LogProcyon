@@ -18,6 +18,7 @@ interface JudicialResponse {
   consulta: { ip_publico: string; porta: number; data_inicio: string; data_fim: string; equipamento_origem: string | null };
   resultados: JudicialResult[];
   total: number;
+  source?: 'logs' | 'static_pool';
 }
 
 export default function JudicialSearch() {
@@ -236,6 +237,18 @@ export default function JudicialSearch() {
                   ? `${result.total} resultado(s) encontrado(s)`
                   : 'Nenhum assinante identificado nesse intervalo'}
               </span>
+              {result.total > 0 && result.source && (
+                <span
+                  className="badge ml-2"
+                  style={{
+                    color: result.source === 'static_pool' ? 'var(--signal)' : 'var(--accent-cyan)',
+                    background: result.source === 'static_pool' ? 'rgba(255,176,0,0.08)' : 'rgba(59,130,246,0.08)',
+                    border: `1px solid ${result.source === 'static_pool' ? 'rgba(255,176,0,0.25)' : 'rgba(59,130,246,0.25)'}`,
+                  }}
+                >
+                  {result.source === 'static_pool' ? 'pool estático' : 'log real'}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
               <Clock size={10} />

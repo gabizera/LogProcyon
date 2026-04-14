@@ -208,4 +208,37 @@ export async function updateConfig(dto: Partial<AppConfig>): Promise<AppConfig> 
   return data;
 }
 
+// ── CGNAT pools ───────────────────────────────────────────────────────────────
+
+export interface CgnatPool {
+  id: string;
+  equipamento_origem: string;
+  private_pool_start: string;
+  public_pool_cidr: string;
+  first_port: number;
+  ports_per_client: number;
+  chains_count: number;
+  description: string;
+  created_at: string;
+}
+
+export async function fetchCgnatPools(): Promise<CgnatPool[]> {
+  const { data } = await api.get('/cgnat-pools');
+  return data;
+}
+
+export async function createCgnatPool(dto: Omit<CgnatPool, 'id' | 'created_at'>): Promise<CgnatPool> {
+  const { data } = await api.post('/cgnat-pools', dto);
+  return data;
+}
+
+export async function updateCgnatPool(id: string, dto: Partial<Omit<CgnatPool, 'id' | 'created_at'>>): Promise<CgnatPool> {
+  const { data } = await api.put(`/cgnat-pools/${id}`, dto);
+  return data;
+}
+
+export async function deleteCgnatPool(id: string): Promise<void> {
+  await api.delete(`/cgnat-pools/${id}`);
+}
+
 export default api;
