@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Radio } from 'lucide-react';
 import { fetchStats, fetchInputs, fetchPublicConfig, type StatsResponse, type Input } from '../api';
 
 export default function Dashboard() {
@@ -172,6 +172,7 @@ export default function Dashboard() {
           rows={stats?.top_ips_publicos ?? []}
           onRowClick={ip => navigate(`/logs?ip_publico=${ip}`)}
           scope={currentInstance}
+          showSource={selectedInstance === ''}
           className="dashed-r"
         />
         <TopIpsPanel
@@ -179,6 +180,7 @@ export default function Dashboard() {
           rows={stats?.top_ips_privados ?? []}
           onRowClick={ip => navigate(`/logs?ip_privado=${ip}`)}
           scope={currentInstance}
+          showSource={selectedInstance === ''}
         />
       </div>
     </div>
@@ -190,12 +192,14 @@ function TopIpsPanel({
   rows,
   onRowClick,
   scope,
+  showSource = false,
   className = '',
 }: {
   title: string;
-  rows: { ip: string; total: number }[];
+  rows: { ip: string; total: number; sources?: string[] }[];
   onRowClick: (ip: string) => void;
   scope: string;
+  showSource?: boolean;
   className?: string;
 }) {
   const maxCount = Math.max(...rows.map(r => Number(r.total)), 1);
@@ -209,13 +213,16 @@ function TopIpsPanel({
       <div className="hairline">
         {visible.map((row, i, arr) => {
           const w = (Number(row.total) / maxCount) * 100;
+          const sources = row.sources ?? [];
+          const primarySource = sources[0] ?? '—';
+          const extra = sources.length > 1 ? ` +${sources.length - 1}` : '';
           return (
             <div
               key={row.ip}
               onClick={() => onRowClick(row.ip)}
               className="cursor-pointer grid items-center"
               style={{
-                gridTemplateColumns: '160px 1fr 60px',
+                gridTemplateColumns: '180px 1fr 60px',
                 gap: 12,
                 padding: '8px 14px',
                 borderBottom: i < arr.length - 1 ? '1px solid var(--rule-1)' : 'none',
@@ -223,7 +230,19 @@ function TopIpsPanel({
                 fontFamily: 'var(--font-mono)',
               }}
             >
-              <span className="tabular truncate" style={{ color: 'var(--signal)' }}>{row.ip}</span>
+              <div className="min-w-0">
+                <div className="tabular truncate" style={{ color: 'var(--signal)' }}>{row.ip}</div>
+                {showSource && (
+                  <div
+                    className="flex items-center gap-1 truncate"
+                    style={{ fontSize: 9, color: 'var(--ink-2)', marginTop: 1, letterSpacing: '0.04em' }}
+                    title={sources.join(' · ')}
+                  >
+                    <Radio size={8} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
+                    <span className="truncate">{primarySource}{extra}</span>
+                  </div>
+                )}
+              </div>
               <div style={{ height: 4, background: 'var(--bg-2)', position: 'relative' }}>
                 <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: 'var(--signal)', width: `${w}%` }} />
               </div>

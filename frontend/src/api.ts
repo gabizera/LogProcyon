@@ -39,8 +39,8 @@ export interface StatsResponse {
   ips_publicos_unicos: number;
   ips_privados_unicos: number;
   volume_24h:               { hora: string;       total: number }[];
-  top_ips_publicos:         { ip: string;          total: number }[];
-  top_ips_privados:         { ip: string;          total: number }[];
+  top_ips_publicos:         { ip: string;          total: number; sources?: string[] }[];
+  top_ips_privados:         { ip: string;          total: number; sources?: string[] }[];
   distribuicao_tipo_nat:    { tipo: string;        total: number }[];
   distribuicao_protocolo:   { protocolo: string;   total: number }[];
   distribuicao_equipamento: { equipamento: string; total: number }[];
@@ -102,10 +102,10 @@ export async function fetchStats(equipamento_origem?: string): Promise<StatsResp
       hora:  v.hour, total: v.count,
     })),
     top_ips_publicos: (data.top_public_ips ?? []).map((v: Record<string, unknown>) => ({
-      ip: v.ip, total: v.count,
+      ip: v.ip as string, total: v.count as number, sources: (v.sources as string[] | undefined) ?? [],
     })),
     top_ips_privados: (data.top_private_ips ?? []).map((v: Record<string, unknown>) => ({
-      ip: v.ip, total: v.count,
+      ip: v.ip as string, total: v.count as number, sources: (v.sources as string[] | undefined) ?? [],
     })),
     distribuicao_tipo_nat: (data.tipo_nat_distribution ?? []).map((v: Record<string, unknown>) => ({
       tipo: v.tipo_nat, total: v.count,

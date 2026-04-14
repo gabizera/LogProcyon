@@ -296,7 +296,8 @@ export class LogsService {
     const topPublicIpsSql = `
       SELECT
         toString(ip_publico) AS ip,
-        count() AS count
+        count() AS count,
+        groupUniqArray(equipamento_origem) AS sources
       FROM nat_logs
       ${where}
       GROUP BY ip_publico
@@ -307,7 +308,8 @@ export class LogsService {
     const topPrivateIpsSql = `
       SELECT
         toString(ip_privado) AS ip,
-        count() AS count
+        count() AS count,
+        groupUniqArray(equipamento_origem) AS sources
       FROM nat_logs
       ${where}
       GROUP BY ip_privado
