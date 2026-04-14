@@ -12,13 +12,13 @@ import SettingsPage  from './pages/Settings';
 import StoragePage   from './pages/Storage';
 
 const nav = [
-  { to: '/',         label: 'OVERVIEW'  },
-  { to: '/logs',     label: 'QUERY'     },
-  { to: '/judicial', label: 'FORENSIC'  },
-  { to: '/storage',  label: 'STORAGE'   },
-  { to: '/inputs',   label: 'SOURCES'   },
-  { to: '/users',    label: 'USERS'     },
-  { to: '/settings', label: 'CONF'      },
+  { to: '/',         label: 'DASHBOARD'     },
+  { to: '/logs',     label: 'LOGS'          },
+  { to: '/judicial', label: 'JUDICIAL'      },
+  { to: '/storage',  label: 'ARMAZENAMENTO' },
+  { to: '/inputs',   label: 'INPUTS'        },
+  { to: '/users',    label: 'USUÁRIOS'      },
+  { to: '/settings', label: 'CONFIG'        },
 ];
 
 export default function App() {
@@ -58,11 +58,11 @@ export default function App() {
       {/* ── Top status bar (tmux-style) ─────────────────────────── */}
       <div className="statusbar">
         <span className="pill">LOGPROCYON</span>
-        <span><span className="k">source</span><b>{platformName}</b></span>
-        <span><span className="k">mode</span><b>multi-tenant</b></span>
+        <span><span className="k">plataforma</span><b>{platformName}</b></span>
+        <span><span className="k">modo</span><b>multi-tenant</b></span>
         <div className="right">
-          <span><span className="k">user</span><b>{user.username}</b></span>
-          <span><span className="k">role</span><b>{(user.role || 'viewer').toUpperCase()}</b></span>
+          <span><span className="k">usuário</span><b>{user.username}</b></span>
+          <span><span className="k">perfil</span><b>{(user.role || 'viewer').toUpperCase()}</b></span>
           <span>
             <span className="k">backend</span>
             <b style={{ color: online ? 'var(--accent-green)' : 'var(--accent-red)' }}>
@@ -75,7 +75,7 @@ export default function App() {
             style={{ marginLeft: 4, cursor: 'pointer', background: 'transparent' }}
             title="Sair"
           >
-            LOGOUT
+            SAIR
           </button>
         </div>
       </div>
