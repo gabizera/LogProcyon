@@ -61,7 +61,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-3xl mx-auto">
       <div className="title-row">
         <h2>sistema<span className="accent"> / configurações</span></h2>
         <span className="meta">fuso horário · nome da plataforma · retenção</span>

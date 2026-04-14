@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>LogProcyon — Directions v2</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --signal: #2f8f87;
+    --signal-hi: #3ba69e;
+    --signal-lo: #1f6b65;
+    --signal-bg: rgba(47, 143, 135, 0.1);
+    --signal-line: rgba(47, 143, 135, 0.28);
+    --danger: #d93b3b;
+    --warn:   #e0b341;
+    --ok:     #4ade80;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: #050505;
+    color: #e5e5e5;
+    font-family: 'JetBrains Mono', monospace;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page-header {
+    padding: 32px 40px 20px;
+    border-bottom: 1px solid #1a1a1a;
+  }
+  .page-header h1 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .page-header p {
+    margin: 0;
+    font-size: 12px;
+    color: #71717a;
+    max-width: 820px;
+    line-height: 1.7;
+  }
+  .page-header code { color: var(--signal); }
+
+  .block {
+    border-bottom: 1px solid #1a1a1a;
+    padding: 40px 0;
+  }
+  .block-label {
+    padding: 0 40px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .block-label .tag {
+    display: inline-block;
+    padding: 3px 10px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    background: var(--signal);
+    color: #050505;
+  }
+  .block-label h2 {
+    margin: 0;
+    font-size: 15px;
+    letter-spacing: 0.04em;
+    color: #e5e5e5;
+    font-weight: 600;
+  }
+  .block-label .sub {
+    color: #52525b;
+    font-size: 11px;
+    margin-left: auto;
+    padding-right: 40px;
+  }
+
+  .block-body {
+    padding: 0 40px;
+  }
+
+  /* ═════════════════════════════════════════════════════════ */
+  /* D — BROADSHEET                                              */
+  /* ═════════════════════════════════════════════════════════ */
+
+  .broadsheet {
+    background: #fbfaf6;
+    color: #0a0a0a;
+    border: 1px solid #e8e5dc;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .broadsheet .topnav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px 16px;
+    border-bottom: 1px solid #0a0a0a;
+  }
+  .broadsheet .topnav .brand {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+    font-style: italic;
+  }
+  .broadsheet .topnav .brand sup {
+    font-family: 'JetBrains Mono', monospace;
+    font-style: normal;
+    font-weight: 500;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    vertical-align: 14px;
+    color: #52525b;
+    margin-left: 4px;
+  }
+  .broadsheet .topnav nav {
+    display: flex;
+    gap: 24px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .broadsheet .topnav nav a {
+    text-decoration: none;
+    color: #52525b;
+    padding-bottom: 2px;
+    border-bottom: 2px solid transparent;
+  }
+  .broadsheet .topnav nav a.active {
+    color: #0a0a0a;
+    border-bottom-color: var(--signal);
+  }
+
+  .broadsheet .masthead {
+    padding: 18px 32px 12px;
+    border-bottom: 1px solid #d5d0c0;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .broadsheet .masthead .dateline {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #52525b;
+  }
+  .broadsheet .masthead .title {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 42px;
+    letter-spacing: -0.02em;
+    line-height: 0.95;
+  }
+  .broadsheet .masthead .live {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--signal);
+  }
+  .broadsheet .masthead .live::before {
+    content: '● ';
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .broadsheet .grid {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    border-bottom: 1px solid #0a0a0a;
+  }
+  .broadsheet .lede {
+    padding: 28px 32px 32px;
+    border-right: 1px solid #d5d0c0;
+  }
+  .broadsheet .lede .kicker {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--signal);
+    margin-bottom: 8px;
+  }
+  .broadsheet .lede .hero {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 112px;
+    line-height: 0.85;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+  .broadsheet .lede .hero .unit {
+    font-size: 22px;
+    color: #52525b;
+    margin-left: 8px;
+    letter-spacing: 0.06em;
+  }
+  .broadsheet .lede .deck {
+    margin-top: 16px;
+    font-family: 'Fraunces', serif;
+    font-size: 17px;
+    line-height: 1.4;
+    max-width: 480px;
+    color: #27272a;
+  }
+  .broadsheet .lede .deck strong { color: #0a0a0a; }
+
+  .broadsheet .lede .stacked {
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px dashed #b8b3a0;
+  }
+  .broadsheet .lede .stacked .label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #52525b;
+    margin-bottom: 8px;
+  }
+  .broadsheet .lede .stacked .track {
+    height: 20px;
+    display: flex;
+    border: 1px solid #0a0a0a;
+  }
+  .broadsheet .lede .stacked .track .seg {
+    height: 100%;
+    position: relative;
+  }
+  .broadsheet .lede .stacked .track .seg:nth-child(1) { background: #0a0a0a; }
+  .broadsheet .lede .stacked .track .seg:nth-child(2) { background: repeating-linear-gradient(45deg, #0a0a0a, #0a0a0a 3px, transparent 3px, transparent 6px); border-left: 1px solid #0a0a0a; }
+  .broadsheet .lede .stacked .track .seg:nth-child(3) { background: transparent; border-left: 1px solid #0a0a0a; }
+  .broadsheet .lede .stacked .legend {
+    margin-top: 8px;
+    display: flex;
+    gap: 20px;
+    font-size: 10px;
+    color: #52525b;
+  }
+  .broadsheet .lede .stacked .legend b {
+    color: #0a0a0a;
+    margin-right: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .broadsheet .sidecol {
+    padding: 28px 28px 32px;
+  }
+  .broadsheet .sidecol h3 {
+    margin: 0 0 12px;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #52525b;
+    border-bottom: 1px solid #0a0a0a;
+    padding-bottom: 6px;
+  }
+  .broadsheet .sidecol .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 7px 0;
+    border-bottom: 1px solid #e8e5dc;
+    font-size: 11px;
+  }
+  .broadsheet .sidecol .row .ip {
+    font-weight: 600;
+    color: #0a0a0a;
+    font-variant-numeric: tabular-nums;
+  }
+  .broadsheet .sidecol .row .n {
+    color: #52525b;
+    font-variant-numeric: tabular-nums;
+  }
+  .broadsheet .sidecol .mini {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .broadsheet .sidecol .mini .item .k {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #52525b;
+    font-weight: 700;
+  }
+  .broadsheet .sidecol .mini .item .v {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 34px;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+  }
+
+  .broadsheet .footbar {
+    padding: 14px 32px;
+    background: #0a0a0a;
+    color: #fbfaf6;
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .broadsheet .footbar span { color: #71717a; }
+  .broadsheet .footbar b { color: var(--signal); font-weight: 600; }
+
+  /* ═════════════════════════════════════════════════════════ */
+  /* E — CONSOLE STREAM                                          */
+  /* ═════════════════════════════════════════════════════════ */
+
+  .console {
+    background: #0a0a0a;
+    border: 1px solid #1a1a1a;
+    overflow: hidden;
+  }
+  .console .topbar {
+    padding: 10px 20px;
+    border-bottom: 1px solid #1a1a1a;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+  .console .topbar .brand {
+    font-weight: 700;
+    color: #e5e5e5;
+    letter-spacing: 0.14em;
+  }
+  .console .topbar .brand::before {
+    content: '';
+    display: inline-block;
+    width: 2px;
+    height: 12px;
+    background: var(--signal);
+    vertical-align: -2px;
+    margin-right: 8px;
+  }
+  .console .topbar .sep {
+    color: #27272a;
+  }
+  .console .topbar nav {
+    display: flex;
+    gap: 14px;
+  }
+  .console .topbar nav a {
+    color: #52525b;
+    text-decoration: none;
+    padding: 2px 6px;
+  }
+  .console .topbar nav a.active {
+    color: var(--signal);
+    background: var(--signal-bg);
+  }
+  .console .topbar .right {
+    margin-left: auto;
+    display: flex;
+    gap: 14px;
+    color: #71717a;
+  }
+  .console .topbar .right b {
+    color: #e5e5e5;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .console .topbar .right .status::before {
+    content: '● ';
+    color: var(--ok);
+  }
+
+  .console .split {
+    display: grid;
+    grid-template-columns: 1.9fr 1fr;
+  }
+  .console .stream {
+    border-right: 1px solid #1a1a1a;
+    max-height: 560px;
+    overflow-y: auto;
+  }
+  .console .stream .stream-header {
+    padding: 10px 18px;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #52525b;
+    border-bottom: 1px solid #161616;
+    display: flex;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: #0a0a0a;
+  }
+  .console .stream .stream-header .count {
+    color: var(--signal);
+  }
+  .console .stream .ev {
+    padding: 7px 18px;
+    display: grid;
+    grid-template-columns: 90px 40px 1fr;
+    gap: 14px;
+    font-size: 11px;
+    align-items: baseline;
+    border-bottom: 1px solid #111;
+  }
+  .console .stream .ev:nth-child(even) { background: #0c0c0c; }
+  .console .stream .ev .ts { color: #52525b; font-variant-numeric: tabular-nums; }
+  .console .stream .ev .sev {
+    font-size: 8px;
+    letter-spacing: 0.14em;
+    font-weight: 700;
+  }
+  .console .stream .ev .sev.info { color: var(--signal); }
+  .console .stream .ev .sev.warn { color: var(--warn); }
+  .console .stream .ev .sev.crit { color: var(--danger); }
+  .console .stream .ev .msg { color: #d4d4d8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .console .stream .ev .msg b { color: #f4f4f5; font-weight: 500; }
+  .console .stream .ev .msg .priv { color: var(--signal); }
+
+  .console .pin {
+    padding: 18px 20px 22px;
+  }
+  .console .pin .section {
+    padding: 12px 0;
+    border-bottom: 1px solid #161616;
+  }
+  .console .pin .section:first-child { padding-top: 0; }
+  .console .pin .section:last-child { border-bottom: none; }
+  .console .pin .section h4 {
+    margin: 0 0 8px;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #52525b;
+    font-weight: 700;
+  }
+  .console .pin .bignum {
+    font-size: 38px;
+    font-weight: 300;
+    line-height: 1;
+    color: #f4f4f5;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .console .pin .bignum .unit {
+    font-size: 11px;
+    color: #52525b;
+    margin-left: 6px;
+    font-weight: 400;
+  }
+  .console .pin .subrow {
+    margin-top: 6px;
+    font-size: 10px;
+    color: #71717a;
+  }
+  .console .pin .subrow b { color: var(--signal); }
+
+  .console .pin .ratebar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 6px;
+  }
+  .console .pin .ratebar .r {
+    padding: 8px 10px;
+    border: 1px solid #161616;
+  }
+  .console .pin .ratebar .k {
+    font-size: 8px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #52525b;
+    font-weight: 700;
+  }
+  .console .pin .ratebar .v {
+    font-size: 18px;
+    color: #f4f4f5;
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+  }
+
+  .console .pin .tiny-bars { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
+  .console .pin .tiny-bars .b {
+    display: grid;
+    grid-template-columns: 60px 1fr 32px;
+    gap: 8px;
+    font-size: 10px;
+    align-items: center;
+  }
+  .console .pin .tiny-bars .b .k { color: #a1a1aa; }
+  .console .pin .tiny-bars .b .t { height: 2px; background: #161616; position: relative; }
+  .console .pin .tiny-bars .b .t::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    background: var(--signal); width: var(--w, 50%);
+  }
+  .console .pin .tiny-bars .b .n { color: #71717a; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ═════════════════════════════════════════════════════════ */
+  /* F — DIAGNOSTIC TERMINAL                                     */
+  /* ═════════════════════════════════════════════════════════ */
+
+  .diag {
+    background: #0b0b0b;
+    color: #e5e5e5;
+    font-family: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+    border: 1px solid #1a1a1a;
+  }
+  .diag .statusbar {
+    background: #111;
+    padding: 6px 16px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: #71717a;
+    display: flex;
+    gap: 16px;
+    border-bottom: 1px solid #1a1a1a;
+  }
+  .diag .statusbar .pill {
+    background: var(--signal);
+    color: #050505;
+    padding: 2px 8px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+  }
+  .diag .statusbar .k { color: #52525b; margin-right: 4px; text-transform: uppercase; letter-spacing: 0.12em; }
+  .diag .statusbar b { color: #e5e5e5; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .diag .statusbar .right { margin-left: auto; color: #52525b; }
+  .diag .statusbar .right b { color: var(--signal); }
+
+  .diag .title-row {
+    padding: 26px 32px 8px;
+    display: flex;
+    align-items: baseline;
+    gap: 24px;
+  }
+  .diag .title-row h2 {
+    margin: 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 32px;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    color: #f4f4f5;
+  }
+  .diag .title-row h2 span { color: var(--signal); }
+  .diag .title-row .meta {
+    font-size: 10px;
+    color: #52525b;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .diag .title-row .right-nav {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    font-size: 10px;
+    color: #52525b;
+  }
+  .diag .title-row .right-nav a {
+    padding: 4px 8px;
+    border: 1px solid #1f1f1f;
+    color: #71717a;
+    text-decoration: none;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .diag .title-row .right-nav a.active {
+    color: var(--signal);
+    border-color: var(--signal);
+  }
+
+  .diag .readout {
+    padding: 18px 32px 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    gap: 0;
+    border-top: 1px solid #161616;
+    border-bottom: 1px solid #161616;
+  }
+  .diag .readout .cell {
+    padding: 14px 0;
+    border-right: 1px dashed #1f1f1f;
+  }
+  .diag .readout .cell:last-child { border-right: none; }
+  .diag .readout .cell .k {
+    font-size: 8px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: #52525b;
+    font-weight: 500;
+  }
+  .diag .readout .cell .v {
+    font-size: 32px;
+    font-weight: 400;
+    color: #f4f4f5;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    margin-top: 4px;
+  }
+  .diag .readout .cell .v.signal { color: var(--signal); }
+  .diag .readout .cell .d {
+    font-size: 10px;
+    color: #52525b;
+    margin-top: 2px;
+    letter-spacing: 0.06em;
+  }
+  .diag .readout .cell .d.up { color: var(--ok); }
+
+  .diag .timeline {
+    padding: 28px 32px 24px;
+  }
+  .diag .timeline .label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #52525b;
+    font-weight: 700;
+    margin-bottom: 14px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .diag .timeline .label .right { color: #71717a; }
+  .diag .timeline .label .right b { color: var(--signal); }
+
+  .diag .timeline .plot {
+    position: relative;
+    height: 130px;
+    border-bottom: 1px solid #1f1f1f;
+    border-top: 1px solid #1f1f1f;
+  }
+  .diag .timeline .plot svg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+  }
+  .diag .timeline .plot svg .grid { stroke: #141414; stroke-width: 1; }
+  .diag .timeline .plot svg .trace { fill: none; stroke: var(--signal); stroke-width: 1.5; }
+  .diag .timeline .plot svg .fill  { fill: var(--signal); opacity: 0.08; }
+
+  .diag .timeline .ticks {
+    margin-top: 6px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: #3f3f46;
+    letter-spacing: 0.08em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .diag .sm {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    padding: 0 32px 24px;
+    gap: 0;
+  }
+  .diag .sm .box {
+    padding: 16px 18px 14px;
+    border-right: 1px solid #161616;
+  }
+  .diag .sm .box:last-child { border-right: none; }
+  .diag .sm .box .k {
+    font-size: 8px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #52525b;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .diag .sm .box .chart {
+    height: 28px;
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+  }
+  .diag .sm .box .chart span {
+    flex: 1;
+    background: var(--signal);
+    opacity: 0.75;
+    min-height: 2px;
+  }
+  .diag .sm .box .v {
+    font-size: 18px;
+    color: #f4f4f5;
+    font-variant-numeric: tabular-nums;
+    margin-top: 8px;
+    letter-spacing: -0.01em;
+  }
+
+  /* ═════════════════════════════════════════════════════════ */
+  /* LOGIN (shared treatment — Minimal Modern layout + mono font) */
+  /* ═════════════════════════════════════════════════════════ */
+
+  .login-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    padding: 0 40px;
+    margin-top: 8px;
+  }
+  .login-card {
+    background: #0f1114;
+    border: 1px solid #1f2126;
+    border-radius: 6px;
+    padding: 28px 28px 26px;
+    max-width: 340px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .login-card .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .login-card .brand .dot {
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    background: var(--signal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #050505;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+  .login-card .brand .name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #f4f4f5;
+    letter-spacing: 0.04em;
+  }
+  .login-card .brand .sub {
+    font-size: 9px;
+    color: #52525b;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  .login-card .flabel {
+    display: block;
+    font-size: 9px;
+    color: #71717a;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin: 10px 0 4px;
+  }
+  .login-card .finput {
+    display: block;
+    width: 100%;
+    padding: 9px 11px;
+    background: #0a0b0d;
+    border: 1px solid #1f2126;
+    border-radius: 5px;
+    color: #f4f4f5;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  .login-card .finput:focus {
+    outline: none;
+    border-color: var(--signal);
+  }
+  .login-card .fbtn {
+    display: block;
+    width: 100%;
+    margin-top: 16px;
+    padding: 10px;
+    background: var(--signal);
+    color: #050505;
+    border: none;
+    border-radius: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+  }
+  .login-card .fbtn:hover { background: var(--signal-hi); }
+  .login-card .foot {
+    margin-top: 14px;
+    text-align: center;
+    font-size: 9px;
+    color: #3f3f46;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .login-card.dark { background: #0a0a0a; border-color: #1a1a1a; }
+  .login-card.dark .finput { background: #0a0a0a; border-color: #1a1a1a; }
+  .login-card.paper { background: #fbfaf6; border: 1px solid #0a0a0a; border-radius: 0; }
+  .login-card.paper .brand .dot { border-radius: 0; }
+  .login-card.paper .brand .name { color: #0a0a0a; }
+  .login-card.paper .brand .sub { color: #52525b; }
+  .login-card.paper .flabel { color: #52525b; }
+  .login-card.paper .finput {
+    background: #fbfaf6;
+    color: #0a0a0a;
+    border: 1px solid #0a0a0a;
+    border-radius: 0;
+  }
+  .login-card.paper .fbtn {
+    background: #0a0a0a;
+    color: var(--signal);
+    border-radius: 0;
+    letter-spacing: 0.16em;
+  }
+  .login-card.paper .foot { color: #52525b; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>LogProcyon — Directions v2</h1>
+  <p>
+    Round 2. Os 3 primeiros eram variações em cima da mesma estrutura de dashboard (sidebar + stat row + chart cards)
+    — por isso ainda davam cara de template. Agora cada direção tem uma <strong>estrutura diferente</strong>:
+    <code>D</code> = broadsheet/jornal, <code>E</code> = console com live stream, <code>F</code> = diagnostic terminal full-bleed.
+    Accent: <code>#2f8f87</code>. Font: <code>JetBrains Mono</code> em tudo (incluindo os 3 logins na base, que seguem a estrutura
+    Minimal Modern mas com mono). Escolhe a que mais te agrada e me diz.
+  </p>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════ -->
+<!-- D — BROADSHEET                                                -->
+<!-- ═════════════════════════════════════════════════════════ -->
+<div class="block">
+  <div class="block-label">
+    <span class="tag">D</span>
+    <h2>BROADSHEET</h2>
+    <span class="sub">Jornal financeiro · Fraunces serif + JetBrains Mono · background papel · zero sidebar</span>
+  </div>
+  <div class="block-body">
+    <div class="broadsheet">
+      <div class="topnav">
+        <div class="brand">Logprocyon<sup>v1</sup></div>
+        <nav>
+          <a href="#" class="active">Overview</a>
+          <a href="#">Query</a>
+          <a href="#">Forensic</a>
+          <a href="#">Storage</a>
+          <a href="#">Sources</a>
+          <a href="#">Users</a>
+          <a href="#">Settings</a>
+        </nav>
+      </div>
+
+      <div class="masthead">
+        <span class="dateline">Tue · 14 Apr 2026 · 15:12 UTC−3</span>
+        <span class="title">Overview</span>
+        <span class="live">LIVE · 30s</span>
+      </div>
+
+      <div class="grid">
+        <div class="lede">
+          <div class="kicker">Events captured · last 24h</div>
+          <div class="hero">235<span class="unit">events</span></div>
+          <div class="deck">
+            <strong>All traffic from <code style="color:var(--signal);font-weight:500">001-ASR1002X-BDR-LIGO</code></strong>
+            (<code>177.152.109.21</code>). BPA accounts for <strong>96%</strong> of the session rate,
+            CGNAT fallback 3%, static NAT 1%. Rate steady at <strong>14 events/min</strong>.
+          </div>
+
+          <div class="stacked">
+            <div class="label">NAT TYPE / 235</div>
+            <div class="track">
+              <div class="seg" style="width: 96%"></div>
+              <div class="seg" style="width: 3%"></div>
+              <div class="seg" style="width: 1%"></div>
+            </div>
+            <div class="legend">
+              <span><b>226</b>BPA</span>
+              <span><b>7</b>CGNAT</span>
+              <span><b>2</b>Static</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sidecol">
+          <h3>Top Public IPs</h3>
+          <div class="row"><span class="ip">177.152.111.179</span><span class="n">38</span></div>
+          <div class="row"><span class="ip">177.152.111.175</span><span class="n">32</span></div>
+          <div class="row"><span class="ip">177.152.111.170</span><span class="n">24</span></div>
+          <div class="row"><span class="ip">177.152.111.150</span><span class="n">19</span></div>
+          <div class="row"><span class="ip">177.152.111.145</span><span class="n">16</span></div>
+          <div class="row"><span class="ip">177.152.111.141</span><span class="n">13</span></div>
+
+          <div class="mini">
+            <div class="item">
+              <div class="k">Public / uniq</div>
+              <div class="v">47</div>
+            </div>
+            <div class="item">
+              <div class="k">Private / uniq</div>
+              <div class="v">32</div>
+            </div>
+            <div class="item">
+              <div class="k">Rate/min</div>
+              <div class="v">14</div>
+            </div>
+            <div class="item">
+              <div class="k">Sources</div>
+              <div class="v">1</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footbar">
+        <span>admin @ 001-asr1002x-bdr-ligo</span>
+        <span><b>Connected</b> · backend ok · collector listening 514/udp</span>
+        <span>v1.0.0</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════ -->
+<!-- E — CONSOLE STREAM                                            -->
+<!-- ═════════════════════════════════════════════════════════ -->
+<div class="block">
+  <div class="block-label">
+    <span class="tag">E</span>
+    <h2>CONSOLE STREAM</h2>
+    <span class="sub">Split 65/35 · live event stream à esquerda · pinboard marginal à direita · sem sidebar, sem cards</span>
+  </div>
+  <div class="block-body">
+    <div class="console">
+      <div class="topbar">
+        <span class="brand">LOGPROCYON</span>
+        <span class="sep">│</span>
+        <nav>
+          <a href="#" class="active">OVERVIEW</a>
+          <a href="#">QUERY</a>
+          <a href="#">FORENSIC</a>
+          <a href="#">SOURCES</a>
+          <a href="#">USERS</a>
+          <a href="#">CONF</a>
+        </nav>
+        <div class="right">
+          <span>rate · <b>14</b>/min</span>
+          <span>events · <b>235</b></span>
+          <span class="status">backend</span>
+        </div>
+      </div>
+
+      <div class="split">
+        <div class="stream">
+          <div class="stream-header">
+            <span>LIVE STREAM · 001-ASR1002X-BDR-LIGO</span>
+            <span class="count">235 events</span>
+          </div>
+          <div class="ev"><span class="ts">15:12:04.221</span><span class="sev info">BPA</span><span class="msg"><b class="priv">100.67.12.38</b>:0 → 177.152.111.145:8192 <b>TCP</b></span></div>
+          <div class="ev"><span class="ts">15:12:03.917</span><span class="sev info">BPA</span><span class="msg"><b class="priv">100.67.12.38</b>:0 → 177.152.111.145:3584 <b>UDP</b></span></div>
+          <div class="ev"><span class="ts">15:12:03.801</span><span class="sev info">BPA</span><span class="msg"><b class="priv">100.67.7.182</b>:0 → 177.152.111.145:3584 <b>UDP</b></span></div>
+          <div class="ev"><span class="ts">15:12:02.445</span><span class="sev info">BPA</span><span class="msg"><b class="priv">100.67.2.166</b>:0 → 177.152.111.154:1024 <b>UDP</b></span></div>
+          <div class="ev"><span class="ts">15:12:01.219</span><span class="sev info">BPA</span><span class="msg"><b class="priv">100.67.5.216</b>:0 → 177.152.111.179:25088 <b>UDP</b></span></div>
+          <div class="ev"><span class="ts">15:11:58.903</span><span class="sev warn">CGNAT</span><span class="msg"><b class="priv">100.67.9.239</b>:0 → 177.152.111.142:30720 <b>UDP</b></span></div>
+          <div class="ev"><span class="ts">15:11:57.512</span><span class="sev info">BPA</span><span class="msg"><b class="priv">100.67.15.212</b>:0 → 177.152.111.175:5632 <b>TCP</b></span></div>
+          <div class="ev"><span class="ts">15:11:57.408</span><span class="sev info">BPA</span><span class="msg"><b class="priv">100.67.15.212</b>:0 → 177.152.111.175:20992 <b>UDP</b></span></div>
+          <div class="ev"><span class="ts">15:11:56.121</span><span class="sev info">BPA</span><span class="msg"><b class="priv">100.67.14.52</b>:0 → 177.152.111.150:8704 <b>TCP</b></span></div>
+          <div class="ev"><span class="ts">15:11:56.020</span><span class="sev info">BPA</span><span class="msg"><b class="priv">100.67.14.52</b>:0 → 177.152.111.150:18432 <b>UDP</b></span></div>
+          <div class="ev"><span class="ts">15:11:54.778</span><span class="sev crit">STATIC</span><span class="msg"><b class="priv">100.67.9.83</b>:0 → 177.152.111.166:22016 <b>UDP</b></span></div>
+          <div class="ev"><span class="ts">15:11:53.412</span><span class="sev info">BPA</span><span class="msg"><b class="priv">100.67.7.88</b>:0 → 177.152.111.155:23552 <b>UDP</b></span></div>
+          <div class="ev"><span class="ts">15:11:52.201</span><span class="sev info">BPA</span><span class="msg"><b class="priv">100.67.10.240</b>:0 → 177.152.111.178:6144 <b>UDP</b></span></div>
+          <div class="ev"><span class="ts">15:11:51.008</span><span class="sev info">BPA</span><span class="msg"><b class="priv">100.67.8.174</b>:0 → 177.152.111.165:4096 <b>TCP</b></span></div>
+          <div class="ev"><span class="ts">15:11:50.902</span><span class="sev info">BPA</span><span class="msg"><b class="priv">100.67.5.118</b>:0 → 177.152.111.159:21504 <b>UDP</b></span></div>
+        </div>
+
+        <div class="pin">
+          <div class="section">
+            <h4>TOTAL EVENTS</h4>
+            <div class="bignum">235<span class="unit">captured</span></div>
+            <div class="subrow">uptime <b>3h 27m</b> · rate stable</div>
+          </div>
+
+          <div class="section">
+            <h4>RATES</h4>
+            <div class="ratebar">
+              <div class="r"><div class="k">/MIN</div><div class="v">14</div></div>
+              <div class="r"><div class="k">/SEC</div><div class="v">0.23</div></div>
+            </div>
+          </div>
+
+          <div class="section">
+            <h4>NAT DISTRIBUTION</h4>
+            <div class="tiny-bars">
+              <div class="b"><span class="k">BPA</span><div class="t" style="--w:96%"></div><span class="n">226</span></div>
+              <div class="b"><span class="k">CGNAT</span><div class="t" style="--w:3%"></div><span class="n">7</span></div>
+              <div class="b"><span class="k">STATIC</span><div class="t" style="--w:1%"></div><span class="n">2</span></div>
+            </div>
+          </div>
+
+          <div class="section">
+            <h4>PROTOCOL</h4>
+            <div class="tiny-bars">
+              <div class="b"><span class="k">UDP</span><div class="t" style="--w:78%"></div><span class="n">183</span></div>
+              <div class="b"><span class="k">TCP</span><div class="t" style="--w:22%"></div><span class="n">52</span></div>
+            </div>
+          </div>
+
+          <div class="section">
+            <h4>IPS UNIQUE</h4>
+            <div class="ratebar">
+              <div class="r"><div class="k">PUB</div><div class="v">47</div></div>
+              <div class="r"><div class="k">PRIV</div><div class="v">32</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════ -->
+<!-- F — DIAGNOSTIC TERMINAL                                       -->
+<!-- ═════════════════════════════════════════════════════════ -->
+<div class="block">
+  <div class="block-label">
+    <span class="tag">F</span>
+    <h2>DIAGNOSTIC TERMINAL</h2>
+    <span class="sub">Full-bleed · tmux status bar · time axis gigante no meio · small multiples embaixo · IBM Plex Mono</span>
+  </div>
+  <div class="block-body">
+    <div class="diag">
+      <div class="statusbar">
+        <span class="pill">OVERVIEW</span>
+        <span><span class="k">source</span><b>001-ASR1002X-BDR-LIGO</b></span>
+        <span><span class="k">events</span><b>235</b></span>
+        <span><span class="k">rate</span><b>14.0/min</b></span>
+        <span><span class="k">protocol</span><b>NetFlow v9</b></span>
+        <span class="right"><span class="k">backend</span><b>ok</b> · <span class="k">storage</span><b>ok</b></span>
+      </div>
+
+      <div class="title-row">
+        <h2>001-ASR1002X-BDR-LIGO<span> / overview</span></h2>
+        <span class="meta">UTC−3 · 14.04.2026 15:12</span>
+        <div class="right-nav">
+          <a href="#" class="active">OVERVIEW</a>
+          <a href="#">QUERY</a>
+          <a href="#">FORENSIC</a>
+          <a href="#">STORAGE</a>
+          <a href="#">CONF</a>
+        </div>
+      </div>
+
+      <div class="readout">
+        <div class="cell">
+          <div class="k">TOTAL</div>
+          <div class="v signal">235</div>
+          <div class="d up">+14 / min</div>
+        </div>
+        <div class="cell">
+          <div class="k">PUB IP</div>
+          <div class="v">47</div>
+          <div class="d">unique</div>
+        </div>
+        <div class="cell">
+          <div class="k">PRIV IP</div>
+          <div class="v">32</div>
+          <div class="d">unique</div>
+        </div>
+        <div class="cell">
+          <div class="k">BPA %</div>
+          <div class="v">96.1</div>
+          <div class="d">226 of 235</div>
+        </div>
+        <div class="cell">
+          <div class="k">UPTIME</div>
+          <div class="v">3:27</div>
+          <div class="d">collector</div>
+        </div>
+      </div>
+
+      <div class="timeline">
+        <div class="label">
+          <span>VOLUME / LAST 24H · TRACE</span>
+          <span class="right">UNIT <b>events / min</b> · PEAK 18.2 at 14:48</span>
+        </div>
+        <div class="plot">
+          <svg viewBox="0 0 1000 130" preserveAspectRatio="none">
+            <line class="grid" x1="0" y1="26"  x2="1000" y2="26"/>
+            <line class="grid" x1="0" y1="52"  x2="1000" y2="52"/>
+            <line class="grid" x1="0" y1="78"  x2="1000" y2="78"/>
+            <line class="grid" x1="0" y1="104" x2="1000" y2="104"/>
+            <path class="fill"  d="M0,130 L0,90 L40,85 L80,78 L120,83 L160,72 L200,66 L240,60 L280,54 L320,58 L360,48 L400,52 L440,44 L480,38 L520,42 L560,32 L600,36 L640,28 L680,20 L720,24 L760,32 L800,26 L840,30 L880,18 L920,12 L960,16 L1000,8 L1000,130 Z"/>
+            <path class="trace" d="M0,90 L40,85 L80,78 L120,83 L160,72 L200,66 L240,60 L280,54 L320,58 L360,48 L400,52 L440,44 L480,38 L520,42 L560,32 L600,36 L640,28 L680,20 L720,24 L760,32 L800,26 L840,30 L880,18 L920,12 L960,16 L1000,8"/>
+          </svg>
+        </div>
+        <div class="ticks">
+          <span>15:12</span><span>14:00</span><span>12:00</span><span>10:00</span><span>08:00</span><span>06:00</span><span>04:00</span><span>02:00</span><span>00:00</span><span>−24h</span>
+        </div>
+      </div>
+
+      <div class="sm">
+        <div class="box">
+          <div class="k">BPA</div>
+          <div class="chart">
+            <span style="height: 60%"></span><span style="height: 72%"></span><span style="height: 58%"></span><span style="height: 80%"></span><span style="height: 92%"></span><span style="height: 84%"></span><span style="height: 100%"></span><span style="height: 88%"></span><span style="height: 76%"></span><span style="height: 94%"></span>
+          </div>
+          <div class="v">226</div>
+        </div>
+        <div class="box">
+          <div class="k">CGNAT</div>
+          <div class="chart">
+            <span style="height: 20%; opacity: 0.5"></span><span style="height: 32%; opacity: 0.5"></span><span style="height: 28%; opacity: 0.5"></span><span style="height: 44%; opacity: 0.5"></span><span style="height: 22%; opacity: 0.5"></span><span style="height: 18%; opacity: 0.5"></span><span style="height: 30%; opacity: 0.5"></span><span style="height: 26%; opacity: 0.5"></span><span style="height: 14%; opacity: 0.5"></span><span style="height: 8%; opacity: 0.5"></span>
+          </div>
+          <div class="v">7</div>
+        </div>
+        <div class="box">
+          <div class="k">STATIC</div>
+          <div class="chart">
+            <span style="height: 6%; opacity: 0.3"></span><span style="height: 3%; opacity: 0.3"></span><span style="height: 0"></span><span style="height: 4%; opacity: 0.3"></span><span style="height: 0"></span><span style="height: 2%; opacity: 0.3"></span><span style="height: 0"></span><span style="height: 0"></span><span style="height: 4%; opacity: 0.3"></span><span style="height: 0"></span>
+          </div>
+          <div class="v">2</div>
+        </div>
+        <div class="box">
+          <div class="k">TCP</div>
+          <div class="chart">
+            <span style="height: 30%"></span><span style="height: 42%"></span><span style="height: 38%"></span><span style="height: 26%"></span><span style="height: 44%"></span><span style="height: 32%"></span><span style="height: 40%"></span><span style="height: 28%"></span><span style="height: 34%"></span><span style="height: 38%"></span>
+          </div>
+          <div class="v">52</div>
+        </div>
+        <div class="box">
+          <div class="k">UDP</div>
+          <div class="chart">
+            <span style="height: 76%"></span><span style="height: 88%"></span><span style="height: 72%"></span><span style="height: 90%"></span><span style="height: 94%"></span><span style="height: 82%"></span><span style="height: 98%"></span><span style="height: 86%"></span><span style="height: 78%"></span><span style="height: 92%"></span>
+          </div>
+          <div class="v">183</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════ -->
+<!-- LOGIN TREATMENT (Minimal Modern layout + mono font)          -->
+<!-- ═════════════════════════════════════════════════════════ -->
+<div class="block">
+  <div class="block-label">
+    <span class="tag">LOGIN</span>
+    <h2>AUTH · Minimal Modern + JetBrains Mono</h2>
+    <span class="sub">Estrutura que você gostou, 3 variantes rápidas (dark padrão, dark profundo, paper)</span>
+  </div>
+  <div class="login-row">
+
+    <div class="login-card">
+      <div class="brand">
+        <div class="dot">LP</div>
+        <div>
+          <div class="name">LogProcyon</div>
+          <div class="sub">sistema de logs da procyon tecnologia</div>
+        </div>
+      </div>
+      <label class="flabel">Usuário</label>
+      <input class="finput" type="text" value="admin" readonly>
+      <label class="flabel">Senha</label>
+      <input class="finput" type="password" value="••••••••••" readonly>
+      <button class="fbtn">Entrar</button>
+      <div class="foot">v1.0 · procyon tecnologia</div>
+    </div>
+
+    <div class="login-card dark">
+      <div class="brand">
+        <div class="dot">LP</div>
+        <div>
+          <div class="name">LogProcyon</div>
+          <div class="sub">sistema de logs da procyon tecnologia</div>
+        </div>
+      </div>
+      <label class="flabel">Usuário</label>
+      <input class="finput" type="text" value="admin" readonly>
+      <label class="flabel">Senha</label>
+      <input class="finput" type="password" value="••••••••••" readonly>
+      <button class="fbtn">Entrar</button>
+      <div class="foot">v1.0 · procyon tecnologia</div>
+    </div>
+
+    <div class="login-card paper">
+      <div class="brand">
+        <div class="dot">LP</div>
+        <div>
+          <div class="name">LogProcyon</div>
+          <div class="sub">sistema de logs da procyon tecnologia</div>
+        </div>
+      </div>
+      <label class="flabel">Usuário</label>
+      <input class="finput" type="text" value="admin" readonly>
+      <label class="flabel">Senha</label>
+      <input class="finput" type="password" value="••••••••••" readonly>
+      <button class="fbtn">ENTRAR</button>
+      <div class="foot">v1.0 · procyon tecnologia</div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

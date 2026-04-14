@@ -70,7 +70,7 @@ export default function JudicialSearch() {
   };
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-4xl mx-auto">
       <div className="title-row">
         <h2>monitoramento<span className="accent"> / judicial</span></h2>
         <span className="meta">identifica o assinante por ip público + porta + período</span>

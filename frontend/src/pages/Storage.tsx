@@ -62,7 +62,7 @@ export default function StoragePage() {
   const compressionRatio = disk.uncompressed_bytes > 0 ? (disk.uncompressed_bytes / disk.compressed_bytes).toFixed(1) : '—';
 
   return (
-    <div className="max-w-6xl">
+    <div className="max-w-6xl mx-auto">
       <div className="title-row">
         <h2>monitoramento<span className="accent"> / armazenamento</span></h2>
         <span className="meta">volume de logs · uso de disco · retenção</span>

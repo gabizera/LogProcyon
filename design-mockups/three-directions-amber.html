@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>LogProcyon — 3 Design Directions · AMBER</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --signal: #ffb000;
+    --signal-hi: #ffc547;
+    --signal-lo: #cc8c00;
+    --signal-bg: rgba(255, 176, 0, 0.12);
+    --signal-line: rgba(255, 176, 0, 0.3);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #050505;
+    color: #e5e5e5;
+    font-family: system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page-header {
+    padding: 32px 40px 16px;
+    border-bottom: 1px solid #1a1a1a;
+  }
+  .page-header h1 {
+    margin: 0 0 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #e5e5e5;
+  }
+  .page-header p {
+    margin: 0;
+    font-size: 12px;
+    color: #71717a;
+    max-width: 720px;
+    line-height: 1.6;
+  }
+  .page-header .accent-swatch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #a1a1aa;
+  }
+  .page-header .accent-swatch .sw {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    background: var(--signal);
+    border: 1px solid #2a2a2a;
+  }
+
+  .columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: #1a1a1a;
+    min-height: 100vh;
+  }
+
+  .col {
+    padding: 24px 20px 40px;
+    min-width: 0;
+  }
+
+  .col-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .col h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .col .tagline {
+    margin: 0 0 20px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #71717a;
+  }
+  .col .tokens {
+    font-size: 9px;
+    margin-bottom: 20px;
+    color: #52525b;
+    line-height: 1.8;
+    padding: 8px 10px;
+    border: 1px dashed #2a2a2a;
+  }
+  .col .tokens strong { color: #a1a1aa; }
+
+  /* ────────────────────────────────────────────────────────── */
+  /* COLUMN A — NOC FORENSE                                      */
+  /* ────────────────────────────────────────────────────────── */
+
+  .col-a {
+    background: #0a0a0a;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .col-a .col-badge {
+    background: var(--signal);
+    color: #050505;
+  }
+  .col-a h2 {
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.04em;
+  }
+  .col-a .tagline { font-family: 'Inter', sans-serif; }
+  .col-a .tokens { font-family: 'JetBrains Mono', monospace; }
+
+  .col-a .mock-shell {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    border: 1px solid #1f1f1f;
+    background: #0a0a0a;
+    margin-bottom: 20px;
+  }
+  .col-a .mock-side {
+    background: #111;
+    border-right: 1px solid #1f1f1f;
+    padding: 12px 0;
+  }
+  .col-a .mock-side .brand {
+    padding: 4px 12px 14px;
+    border-bottom: 1px solid #1f1f1f;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .col-a .mock-side .brand::before {
+    content: '';
+    width: 2px;
+    height: 22px;
+    background: var(--signal);
+  }
+  .col-a .mock-side .brand-name {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: #e5e5e5;
+  }
+  .col-a .mock-side .brand-sub {
+    font-size: 7px;
+    letter-spacing: 0.2em;
+    color: #52525b;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  .col-a .mock-side .section-label {
+    padding: 0 12px;
+    font-size: 7px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    color: #3f3f46;
+    margin: 8px 0 4px;
+    text-transform: uppercase;
+  }
+  .col-a .mock-side .nav-item {
+    padding: 6px 12px;
+    font-size: 10px;
+    color: #71717a;
+    letter-spacing: 0.04em;
+    position: relative;
+  }
+  .col-a .mock-side .nav-item.active {
+    color: var(--signal);
+    background: var(--signal-bg);
+  }
+  .col-a .mock-side .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--signal);
+  }
+
+  .col-a .mock-main {
+    padding: 14px 16px;
+    min-width: 0;
+  }
+  .col-a .mock-crumb {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: #52525b;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .col-a .mock-crumb span { color: #a1a1aa; }
+  .col-a .mock-title {
+    font-size: 13px;
+    color: #e5e5e5;
+    margin-bottom: 14px;
+    letter-spacing: 0.04em;
+    display: flex;
+    justify-content: space-between;
+  }
+  .col-a .mock-title .live {
+    font-size: 8px;
+    color: var(--signal);
+    letter-spacing: 0.2em;
+  }
+  .col-a .mock-title .live::before {
+    content: '● ';
+    color: #4ade80;
+  }
+
+  .col-a .density {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border: 1px solid #1f1f1f;
+    margin-bottom: 14px;
+  }
+  .col-a .density .cell {
+    padding: 10px 12px;
+    border-right: 1px solid #1f1f1f;
+    min-width: 0;
+  }
+  .col-a .density .cell:last-child { border-right: none; }
+  .col-a .density .k {
+    font-size: 7px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    color: #52525b;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .col-a .density .v {
+    font-size: 15px;
+    font-weight: 600;
+    color: #e5e5e5;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .col-a .density .sub {
+    font-size: 8px;
+    color: #3f3f46;
+    margin-top: 1px;
+  }
+
+  .col-a .panel {
+    border: 1px solid #1f1f1f;
+    margin-bottom: 12px;
+  }
+  .col-a .panel-header {
+    padding: 6px 12px;
+    border-bottom: 1px solid #1f1f1f;
+    font-size: 8px;
+    letter-spacing: 0.2em;
+    color: #71717a;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+  }
+  .col-a .panel-header .hint { color: #3f3f46; }
+  .col-a .panel-body { padding: 12px; }
+
+  .col-a .stacked-bar .row {
+    display: grid;
+    grid-template-columns: 64px 1fr 50px;
+    gap: 8px;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 9px;
+  }
+  .col-a .stacked-bar .k {
+    color: #a1a1aa;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .col-a .stacked-bar .track {
+    height: 6px;
+    background: #161616;
+    position: relative;
+  }
+  .col-a .stacked-bar .track .fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    background: var(--signal);
+  }
+  .col-a .stacked-bar .v {
+    text-align: right;
+    color: #71717a;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .col-a .topips .row {
+    display: grid;
+    grid-template-columns: 110px 1fr 60px;
+    gap: 10px;
+    font-size: 9px;
+    padding: 3px 0;
+    align-items: center;
+    border-bottom: 1px solid #161616;
+  }
+  .col-a .topips .row:last-child { border-bottom: none; }
+  .col-a .topips .ip {
+    color: var(--signal);
+    font-variant-numeric: tabular-nums;
+  }
+  .col-a .topips .bar {
+    height: 4px;
+    background: #161616;
+    position: relative;
+  }
+  .col-a .topips .bar::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    background: var(--signal);
+    width: var(--w, 50%);
+  }
+  .col-a .topips .n {
+    color: #71717a;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .col-a .login-mini {
+    border: 1px solid #1f1f1f;
+    padding: 18px;
+    margin-top: 10px;
+  }
+  .col-a .login-mini::before {
+    content: 'AUTH';
+    display: block;
+    font-size: 7px;
+    letter-spacing: 0.2em;
+    color: #3f3f46;
+    margin-bottom: 10px;
+  }
+  .col-a .login-mini h3 {
+    margin: 0 0 2px;
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+    color: #e5e5e5;
+  }
+  .col-a .login-mini h3::before {
+    content: '';
+    display: inline-block;
+    width: 2px;
+    height: 14px;
+    background: var(--signal);
+    margin-right: 6px;
+    vertical-align: -2px;
+  }
+  .col-a .login-mini .sub {
+    font-size: 8px;
+    color: #52525b;
+    letter-spacing: 0.2em;
+    margin-bottom: 14px;
+  }
+  .col-a .login-mini .field {
+    margin-bottom: 8px;
+  }
+  .col-a .login-mini .flabel {
+    font-size: 7px;
+    letter-spacing: 0.2em;
+    color: #71717a;
+    display: block;
+    margin-bottom: 3px;
+  }
+  .col-a .login-mini .finput {
+    display: block;
+    width: 100%;
+    padding: 6px 8px;
+    background: #111;
+    border: 1px solid #1f1f1f;
+    color: #e5e5e5;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+  }
+  .col-a .login-mini .fbtn {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    padding: 7px;
+    background: var(--signal);
+    color: #050505;
+    border: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    cursor: pointer;
+  }
+
+  /* ────────────────────────────────────────────────────────── */
+  /* COLUMN B — MINIMAL MODERN                                   */
+  /* ────────────────────────────────────────────────────────── */
+
+  .col-b {
+    background: #0b0d10;
+    font-family: 'Inter', sans-serif;
+  }
+  .col-b .col-badge {
+    background: var(--signal);
+    color: #050505;
+    border-radius: 3px;
+  }
+  .col-b .tokens { font-family: 'JetBrains Mono', monospace; }
+
+  .col-b .mock-shell {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    background: #0b0d10;
+    border: 1px solid #1b1f25;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .col-b .mock-side {
+    background: #0f1217;
+    border-right: 1px solid #1b1f25;
+    padding: 14px 0;
+  }
+  .col-b .mock-side .brand {
+    padding: 4px 14px 14px;
+    border-bottom: 1px solid #1b1f25;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .col-b .mock-side .brand-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: var(--signal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #050505;
+    font-weight: 700;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .col-b .mock-side .brand-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #e5e5e5;
+  }
+  .col-b .mock-side .brand-sub {
+    font-size: 8px;
+    color: #52525b;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 1px;
+  }
+  .col-b .mock-side .section-label {
+    padding: 0 14px;
+    font-size: 9px;
+    font-weight: 600;
+    color: #52525b;
+    margin: 6px 0 3px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .col-b .mock-side .nav-item {
+    padding: 7px 14px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #71717a;
+    border-radius: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .col-b .mock-side .nav-item::before {
+    content: '■';
+    font-size: 6px;
+    color: #3f3f46;
+  }
+  .col-b .mock-side .nav-item.active {
+    color: var(--signal);
+    background: var(--signal-bg);
+  }
+  .col-b .mock-side .nav-item.active::before { color: var(--signal); }
+
+  .col-b .mock-main {
+    padding: 18px 18px;
+  }
+  .col-b .mock-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 16px;
+  }
+  .col-b .mock-title h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .col-b .mock-title .sub {
+    font-size: 10px;
+    color: #71717a;
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 3px;
+  }
+  .col-b .mock-title .filter {
+    padding: 5px 10px;
+    background: #0f1217;
+    border: 1px solid #1b1f25;
+    border-radius: 5px;
+    font-size: 10px;
+    color: var(--signal);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .col-b .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .col-b .stats .stat {
+    padding: 12px 14px;
+    background: #0f1217;
+    border: 1px solid #1b1f25;
+    border-radius: 6px;
+  }
+  .col-b .stats .k {
+    font-size: 9px;
+    color: #71717a;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .col-b .stats .v {
+    font-size: 20px;
+    font-weight: 600;
+    color: #e5e5e5;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .col-b .stats .delta {
+    font-size: 10px;
+    color: var(--signal);
+    margin-top: 2px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .col-b .panel {
+    padding: 14px;
+    background: #0f1217;
+    border: 1px solid #1b1f25;
+    border-radius: 6px;
+    margin-bottom: 10px;
+  }
+  .col-b .panel h4 {
+    margin: 0 0 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #e5e5e5;
+    display: flex;
+    justify-content: space-between;
+  }
+  .col-b .panel h4 .tag {
+    font-size: 9px;
+    color: #52525b;
+    font-weight: 400;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .col-b .bars .bar {
+    display: grid;
+    grid-template-columns: 90px 1fr 40px;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    font-size: 10px;
+  }
+  .col-b .bars .k { color: #a1a1aa; font-family: 'JetBrains Mono', monospace; }
+  .col-b .bars .track {
+    height: 6px;
+    background: #1b1f25;
+    border-radius: 3px;
+    position: relative;
+  }
+  .col-b .bars .track::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    background: var(--signal);
+    border-radius: 3px;
+    width: var(--w, 50%);
+  }
+  .col-b .bars .v {
+    text-align: right;
+    color: #71717a;
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .col-b .login-mini {
+    background: #0f1217;
+    border: 1px solid #1b1f25;
+    border-radius: 8px;
+    padding: 22px 20px;
+    margin-top: 10px;
+  }
+  .col-b .login-mini .brand-big {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .col-b .login-mini .brand-big .dot {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: var(--signal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #050505;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  .col-b .login-mini h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .col-b .login-mini .sub {
+    font-size: 9px;
+    color: #71717a;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.1em;
+    text-align: center;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .col-b .login-mini .flabel {
+    display: block;
+    font-size: 9px;
+    font-family: 'JetBrains Mono', monospace;
+    color: #71717a;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+    margin-top: 8px;
+  }
+  .col-b .login-mini .finput {
+    display: block;
+    width: 100%;
+    padding: 8px 10px;
+    background: #0b0d10;
+    border: 1px solid #1b1f25;
+    border-radius: 5px;
+    color: #e5e5e5;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+  .col-b .login-mini .fbtn {
+    display: block;
+    width: 100%;
+    margin-top: 14px;
+    padding: 9px;
+    background: var(--signal);
+    color: #050505;
+    border: none;
+    border-radius: 5px;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* ────────────────────────────────────────────────────────── */
+  /* COLUMN C — LAB INSTRUMENT                                   */
+  /* ────────────────────────────────────────────────────────── */
+
+  .col-c {
+    background: #070808;
+    font-family: 'IBM Plex Mono', monospace;
+    background-image:
+      linear-gradient(#0e0f0f 1px, transparent 1px),
+      linear-gradient(90deg, #0e0f0f 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-position: 0 0;
+  }
+  .col-c .col-badge {
+    background: transparent;
+    border: 1px solid var(--signal);
+    color: var(--signal);
+  }
+  .col-c h2 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .col-c .tagline { font-family: 'Inter', sans-serif; }
+
+  .col-c .mock-shell {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    background: rgba(7, 8, 8, 0.92);
+    border: 1px solid var(--signal-line);
+    margin-bottom: 20px;
+    backdrop-filter: blur(2px);
+  }
+  .col-c .mock-side {
+    border-right: 1px solid var(--signal-line);
+    padding: 10px 0;
+  }
+  .col-c .mock-side .brand {
+    padding: 4px 12px 12px;
+    border-bottom: 1px solid var(--signal-line);
+    margin-bottom: 10px;
+  }
+  .col-c .mock-side .brand-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--signal);
+    letter-spacing: 0.1em;
+  }
+  .col-c .mock-side .brand-sub {
+    font-size: 7px;
+    color: #52525b;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    margin-top: 3px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .col-c .mock-side .brand-sub::before {
+    content: '';
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--signal);
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .col-c .mock-side .section-label {
+    padding: 0 12px;
+    font-size: 7px;
+    color: #3f3f46;
+    letter-spacing: 0.24em;
+    margin: 8px 0 2px;
+    text-transform: uppercase;
+  }
+  .col-c .mock-side .section-label::before {
+    content: '>';
+    color: var(--signal);
+    margin-right: 4px;
+  }
+  .col-c .mock-side .nav-item {
+    padding: 5px 12px 5px 20px;
+    font-size: 10px;
+    color: #a1a1aa;
+    position: relative;
+  }
+  .col-c .mock-side .nav-item::before {
+    content: '';
+    position: absolute;
+    left: 12px; top: 50%;
+    width: 4px; height: 4px;
+    background: #3f3f46;
+    transform: translateY(-50%);
+  }
+  .col-c .mock-side .nav-item.active {
+    color: #e5e5e5;
+    background: var(--signal-bg);
+  }
+  .col-c .mock-side .nav-item.active::before {
+    background: var(--signal);
+    box-shadow: 0 0 8px var(--signal);
+  }
+
+  .col-c .mock-main {
+    padding: 12px 14px;
+  }
+  .col-c .readout-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--signal-line);
+  }
+  .col-c .readout-header h3 {
+    margin: 0;
+    font-size: 11px;
+    color: #e5e5e5;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .col-c .readout-header h3::before {
+    content: '▸ ';
+    color: var(--signal);
+  }
+  .col-c .readout-header .ts {
+    font-size: 8px;
+    color: #52525b;
+    text-align: right;
+    letter-spacing: 0.08em;
+  }
+  .col-c .readout-header .ts .live {
+    color: var(--signal);
+  }
+
+  .col-c .scope {
+    border: 1px solid var(--signal-line);
+    padding: 0;
+    margin-bottom: 10px;
+  }
+  .col-c .scope .meta {
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--signal-line);
+    font-size: 8px;
+    color: #71717a;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+  }
+  .col-c .scope .meta .unit { color: var(--signal); }
+  .col-c .scope .trace {
+    padding: 10px;
+    height: 64px;
+    position: relative;
+  }
+  .col-c .scope svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .col-c .scope svg path { stroke: var(--signal); stroke-width: 1.2; fill: none; }
+  .col-c .scope svg path.glow { stroke-width: 3; opacity: 0.25; }
+  .col-c .scope svg line { stroke: #1a1a1a; stroke-width: 0.5; }
+
+  .col-c .meter-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .col-c .meter {
+    border: 1px solid var(--signal-line);
+    padding: 8px 10px;
+  }
+  .col-c .meter .k {
+    font-size: 7px;
+    color: #52525b;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .col-c .meter .v {
+    font-size: 16px;
+    color: var(--signal);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+    margin-top: 2px;
+  }
+  .col-c .meter .unit {
+    font-size: 9px;
+    color: #71717a;
+    margin-left: 3px;
+  }
+
+  .col-c .ruler {
+    border: 1px solid var(--signal-line);
+    padding: 8px 10px;
+    margin-bottom: 10px;
+  }
+  .col-c .ruler .label {
+    font-size: 7px;
+    letter-spacing: 0.2em;
+    color: #71717a;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .col-c .ruler .ticks {
+    display: flex;
+    gap: 2px;
+    align-items: flex-end;
+    height: 32px;
+  }
+  .col-c .ruler .ticks span {
+    flex: 1;
+    background: var(--signal);
+    min-width: 2px;
+  }
+
+  .col-c .login-mini {
+    border: 1px solid var(--signal-line);
+    padding: 18px 16px;
+    margin-top: 8px;
+    background: rgba(7, 8, 8, 0.92);
+  }
+  .col-c .login-mini::before {
+    content: '▸ AUTH_SESSION';
+    display: block;
+    font-size: 8px;
+    letter-spacing: 0.2em;
+    color: var(--signal);
+    margin-bottom: 10px;
+  }
+  .col-c .login-mini h3 {
+    margin: 0 0 3px;
+    font-size: 14px;
+    color: #e5e5e5;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .col-c .login-mini .sub {
+    font-size: 8px;
+    color: #52525b;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .col-c .login-mini .flabel {
+    display: block;
+    font-size: 8px;
+    color: #71717a;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin: 8px 0 3px;
+  }
+  .col-c .login-mini .flabel::before { content: '> '; color: var(--signal); }
+  .col-c .login-mini .finput {
+    display: block;
+    width: 100%;
+    padding: 6px 8px;
+    background: rgba(7,8,8,0.6);
+    border: 1px solid var(--signal-line);
+    color: var(--signal);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+  }
+  .col-c .login-mini .fbtn {
+    display: block;
+    width: 100%;
+    margin-top: 14px;
+    padding: 8px;
+    background: transparent;
+    color: var(--signal);
+    border: 1px solid var(--signal);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .col-c .login-mini .fbtn:hover {
+    background: var(--signal);
+    color: #050505;
+  }
+
+  @media (max-width: 1200px) {
+    .columns { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>LogProcyon — 3 Design Directions · AMBER VARIANT</h1>
+  <p>
+    Mesma estrutura das 3 direções (NOC Forense / Minimal Modern / Lab Instrument), mas com accent
+    <strong>#ffb000</strong> (amber CRT / Bloomberg / phosphor). Abre esta junto com a versão teal
+    (<code>three-directions.html</code>) em abas separadas pra comparar lado a lado e decidir qual
+    combinação cor + direção você quer no código.
+  </p>
+  <div class="accent-swatch">
+    <span class="sw"></span> signal #ffb000 · bg #0a0a0a · contraste 10.8:1 (AAA) · brighter, mais "alerta"
+  </div>
+</div>
+
+<div class="columns">
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <!-- A — NOC FORENSE                                              -->
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <div class="col col-a">
+    <span class="col-badge">A · NOC FORENSE</span>
+    <h2>NOC Forense</h2>
+    <p class="tagline">
+      Bloomberg + btop + Wireshark. Radius 2px, mono-first (JetBrains Mono), hairline borders,
+      zero gradient, density row em vez de stat cards, stacked bar em vez de pie. Mais denso,
+      mais opinativo, mais difícil de confundir com template AI.
+    </p>
+    <div class="tokens">
+      <strong>FONT</strong> JetBrains Mono (display + mono), Inter (longform)<br>
+      <strong>RADIUS</strong> 0 / 2px max<br>
+      <strong>DENSITY</strong> alta · linhas 20-24px · spacing base 4<br>
+      <strong>CARDS</strong> hairline 1px #1f1f1f, no shadow<br>
+      <strong>CTA</strong> flat solid signal, letras small caps tracking 0.14em
+    </div>
+
+    <div class="mock-shell">
+      <div class="mock-side">
+        <div class="brand">
+          <div>
+            <div class="brand-name">LOGPROCYON</div>
+            <div class="brand-sub">NAT · CGNAT · BPA</div>
+          </div>
+        </div>
+        <div class="section-label">MONITOR</div>
+        <div class="nav-item active">OVERVIEW</div>
+        <div class="nav-item">QUERY</div>
+        <div class="nav-item">AUDIT</div>
+        <div class="nav-item">STORAGE</div>
+        <div class="section-label">SYSTEM</div>
+        <div class="nav-item">SOURCES</div>
+        <div class="nav-item">USERS</div>
+        <div class="nav-item">CONFIG</div>
+      </div>
+      <div class="mock-main">
+        <div class="mock-crumb">MONITOR / <span>OVERVIEW</span></div>
+        <div class="mock-title">
+          <span>OVERVIEW</span>
+          <span class="live">LIVE · 30s</span>
+        </div>
+
+        <div class="density">
+          <div class="cell">
+            <div class="k">TOTAL</div>
+            <div class="v">235</div>
+            <div class="sub">+14 / 1m</div>
+          </div>
+          <div class="cell">
+            <div class="k">HOJE</div>
+            <div class="v">235</div>
+            <div class="sub">100%</div>
+          </div>
+          <div class="cell">
+            <div class="k">PUB IP</div>
+            <div class="v">47</div>
+            <div class="sub">unique</div>
+          </div>
+          <div class="cell">
+            <div class="k">PRIV IP</div>
+            <div class="v">32</div>
+            <div class="sub">unique</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <span>NAT TYPE DIST</span>
+            <span class="hint">100% = 235</span>
+          </div>
+          <div class="panel-body stacked-bar">
+            <div class="row"><span class="k">BPA</span>
+              <div class="track"><div class="fill" style="width: 96%"></div></div>
+              <span class="v">226</span>
+            </div>
+            <div class="row"><span class="k">CGNAT</span>
+              <div class="track"><div class="fill" style="width: 3%"></div></div>
+              <span class="v">7</span>
+            </div>
+            <div class="row"><span class="k">ESTAT</span>
+              <div class="track"><div class="fill" style="width: 1%"></div></div>
+              <span class="v">2</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <span>TOP PUBLIC IPS</span>
+            <span class="hint">click to drill</span>
+          </div>
+          <div class="panel-body topips">
+            <div class="row"><span class="ip">177.152.111.179</span><div class="bar" style="--w:100%"></div><span class="n">38</span></div>
+            <div class="row"><span class="ip">177.152.111.175</span><div class="bar" style="--w:84%"></div><span class="n">32</span></div>
+            <div class="row"><span class="ip">177.152.111.170</span><div class="bar" style="--w:63%"></div><span class="n">24</span></div>
+            <div class="row"><span class="ip">177.152.111.150</span><div class="bar" style="--w:50%"></div><span class="n">19</span></div>
+            <div class="row"><span class="ip">177.152.111.145</span><div class="bar" style="--w:42%"></div><span class="n">16</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="login-mini">
+      <h3>LOGPROCYON</h3>
+      <div class="sub">AUTHENTICATE</div>
+      <div class="field">
+        <label class="flabel">USER</label>
+        <input class="finput" type="text" value="admin" readonly>
+      </div>
+      <div class="field">
+        <label class="flabel">KEY</label>
+        <input class="finput" type="password" value="••••••••••" readonly>
+      </div>
+      <button class="fbtn">&gt; ENTER</button>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <!-- B — MINIMAL MODERN                                           -->
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <div class="col col-b">
+    <span class="col-badge">B · MINIMAL MODERN</span>
+    <h2>Minimal Modern</h2>
+    <p class="tagline">
+      Meio-termo. Inter pro chrome + JetBrains Mono pra dados, radius 6-8px, stat cards em 2x2
+      (não 4x1), filter pill no header, accent usado só em números e links. Menos radical que a
+      A, mais conservador — e ainda assim sem o "AI slop" look porque tem UMA cor só, zero gradient,
+      zero blob, zero pie chart.
+    </p>
+    <div class="tokens">
+      <strong>FONT</strong> Inter (UI + títulos), JetBrains Mono (dados)<br>
+      <strong>RADIUS</strong> 5-8px<br>
+      <strong>DENSITY</strong> média · spacing base 4-8<br>
+      <strong>CARDS</strong> #0f1217 + border #1b1f25 + subtle radius<br>
+      <strong>CTA</strong> flat signal solid, Inter 600
+    </div>
+
+    <div class="mock-shell">
+      <div class="mock-side">
+        <div class="brand">
+          <div class="brand-dot">LP</div>
+          <div>
+            <div class="brand-name">LogProcyon</div>
+            <div class="brand-sub">NAT · CGNAT</div>
+          </div>
+        </div>
+        <div class="section-label">Monitor</div>
+        <div class="nav-item active">Dashboard</div>
+        <div class="nav-item">Logs</div>
+        <div class="nav-item">Judicial</div>
+        <div class="nav-item">Storage</div>
+        <div class="section-label">System</div>
+        <div class="nav-item">Inputs</div>
+        <div class="nav-item">Users</div>
+        <div class="nav-item">Settings</div>
+      </div>
+      <div class="mock-main">
+        <div class="mock-title">
+          <div>
+            <h3>Dashboard</h3>
+            <div class="sub">auto-refresh · 30s</div>
+          </div>
+          <div class="filter">001-ASR1002X-BDR-LIGO ▾</div>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <div class="k">Total de Logs</div>
+            <div class="v">235</div>
+            <div class="delta">+14 último min</div>
+          </div>
+          <div class="stat">
+            <div class="k">Logs Hoje</div>
+            <div class="v">235</div>
+            <div class="delta">100%</div>
+          </div>
+          <div class="stat">
+            <div class="k">IPs Públicos</div>
+            <div class="v">47</div>
+            <div class="delta">únicos</div>
+          </div>
+          <div class="stat">
+            <div class="k">IPs Privados</div>
+            <div class="v">32</div>
+            <div class="delta">únicos</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h4>Top IPs Públicos <span class="tag">24h</span></h4>
+          <div class="bars">
+            <div class="bar"><span class="k">111.179</span><div class="track" style="--w:100%"></div><span class="v">38</span></div>
+            <div class="bar"><span class="k">111.175</span><div class="track" style="--w:84%"></div><span class="v">32</span></div>
+            <div class="bar"><span class="k">111.170</span><div class="track" style="--w:63%"></div><span class="v">24</span></div>
+            <div class="bar"><span class="k">111.150</span><div class="track" style="--w:50%"></div><span class="v">19</span></div>
+            <div class="bar"><span class="k">111.145</span><div class="track" style="--w:42%"></div><span class="v">16</span></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h4>Distribuição NAT <span class="tag">235 total</span></h4>
+          <div class="bars">
+            <div class="bar"><span class="k">BPA</span><div class="track" style="--w:96%"></div><span class="v">226</span></div>
+            <div class="bar"><span class="k">CGNAT</span><div class="track" style="--w:3%"></div><span class="v">7</span></div>
+            <div class="bar"><span class="k">Estático</span><div class="track" style="--w:1%"></div><span class="v">2</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="login-mini">
+      <div class="brand-big">
+        <div class="dot">LP</div>
+        <h3>LogProcyon</h3>
+      </div>
+      <div class="sub">NAT · CGNAT · BPA</div>
+      <label class="flabel">Usuário</label>
+      <input class="finput" type="text" value="admin" readonly>
+      <label class="flabel">Senha</label>
+      <input class="finput" type="password" value="••••••••••" readonly>
+      <button class="fbtn">Entrar</button>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <!-- C — LAB INSTRUMENT                                           -->
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <div class="col col-c">
+    <span class="col-badge">C · LAB INSTRUMENT</span>
+    <h2>Lab Instrument</h2>
+    <p class="tagline">
+      Osciloscópio/equipamento de laboratório. Grid paper 24px sutil no bg, IBM Plex Mono
+      (mais técnica que JetBrains), medidores ao invés de "stat cards", SVG trace como hero
+      chart, caracteres ASCII como decoração (<code>▸ &gt;</code>). Mais forte personalidade,
+      mais nicho "instrumento".
+    </p>
+    <div class="tokens">
+      <strong>FONT</strong> IBM Plex Mono (tudo)<br>
+      <strong>RADIUS</strong> 0<br>
+      <strong>DENSITY</strong> alta · rulers + meters<br>
+      <strong>CARDS</strong> border signal-line (teal 28% alpha)<br>
+      <strong>BG</strong> grid paper 24px #0e0f0f
+    </div>
+
+    <div class="mock-shell">
+      <div class="mock-side">
+        <div class="brand">
+          <div class="brand-name">LOGPROCYON</div>
+          <div class="brand-sub">SIGNAL ACTIVE</div>
+        </div>
+        <div class="section-label">PROBE</div>
+        <div class="nav-item active">OVERVIEW</div>
+        <div class="nav-item">TRACE</div>
+        <div class="nav-item">FORENSIC</div>
+        <div class="nav-item">VOLUME</div>
+        <div class="section-label">SYS</div>
+        <div class="nav-item">SOURCES</div>
+        <div class="nav-item">ACL</div>
+        <div class="nav-item">CONF</div>
+      </div>
+      <div class="mock-main">
+        <div class="readout-header">
+          <h3>OVERVIEW</h3>
+          <div class="ts">
+            <div class="live">● LIVE</div>
+            <div>14.04.26 · 15:12</div>
+          </div>
+        </div>
+
+        <div class="scope">
+          <div class="meta"><span>VOLUME / LAST 24H</span><span class="unit">events · min</span></div>
+          <div class="trace">
+            <svg viewBox="0 0 300 60" preserveAspectRatio="none">
+              <line x1="0" y1="15" x2="300" y2="15"/>
+              <line x1="0" y1="30" x2="300" y2="30"/>
+              <line x1="0" y1="45" x2="300" y2="45"/>
+              <path class="glow" d="M0,45 L20,44 L40,38 L60,41 L80,32 L100,28 L120,30 L140,22 L160,18 L180,25 L200,16 L220,20 L240,12 L260,15 L280,10 L300,8"/>
+              <path d="M0,45 L20,44 L40,38 L60,41 L80,32 L100,28 L120,30 L140,22 L160,18 L180,25 L200,16 L220,20 L240,12 L260,15 L280,10 L300,8"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="meter-row">
+          <div class="meter">
+            <div class="k">TOTAL</div>
+            <div class="v">235<span class="unit">events</span></div>
+          </div>
+          <div class="meter">
+            <div class="k">RATE</div>
+            <div class="v">14<span class="unit">/min</span></div>
+          </div>
+          <div class="meter">
+            <div class="k">PUB</div>
+            <div class="v">47<span class="unit">ips</span></div>
+          </div>
+          <div class="meter">
+            <div class="k">PRIV</div>
+            <div class="v">32<span class="unit">ips</span></div>
+          </div>
+        </div>
+
+        <div class="ruler">
+          <div class="label"><span>NAT DIST</span><span>BPA · CGNAT · EST</span></div>
+          <div class="ticks">
+            <span style="height: 100%"></span>
+            <span style="height: 96%"></span>
+            <span style="height: 92%"></span>
+            <span style="height: 88%"></span>
+            <span style="height: 94%"></span>
+            <span style="height: 90%"></span>
+            <span style="height: 85%"></span>
+            <span style="height: 92%"></span>
+            <span style="height: 96%"></span>
+            <span style="height: 88%"></span>
+            <span style="height: 90%"></span>
+            <span style="height: 98%"></span>
+            <span style="height: 14%; opacity: 0.6"></span>
+            <span style="height: 22%; opacity: 0.6"></span>
+            <span style="height: 18%; opacity: 0.6"></span>
+            <span style="height: 4%; opacity: 0.3"></span>
+            <span style="height: 6%; opacity: 0.3"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="login-mini">
+      <h3>LOGPROCYON</h3>
+      <div class="sub">AUTH TERMINAL v1.0</div>
+      <label class="flabel">USER</label>
+      <input class="finput" type="text" value="admin" readonly>
+      <label class="flabel">KEY</label>
+      <input class="finput" type="password" value="••••••••••" readonly>
+      <button class="fbtn">▸ CONNECT</button>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

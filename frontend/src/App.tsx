@@ -84,7 +84,7 @@ export default function App() {
 
       {/* ── Global nav strip ────────────────────────────────────── */}
       <nav
-        className="flex items-center gap-2 px-6 hairline-b"
+        className="flex items-center justify-center gap-2 px-6 hairline-b"
         style={{ height: 'var(--nav-h)', background: 'var(--bg-0)' }}
       >
         {nav.filter(item => item.roles.includes(user.role)).map(item => {

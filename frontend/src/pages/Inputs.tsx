@@ -158,7 +158,7 @@ export default function Inputs() {
   };
 
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-5xl mx-auto">
       <div className="title-row">
         <h2>sistema<span className="accent"> / inputs</span></h2>
         <span className="meta">fontes de log configuradas</span>
