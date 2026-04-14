@@ -136,17 +136,28 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-2">
           {showSelector && (
-            <select
-              value={selectedInstance}
-              onChange={e => setSelectedInstance(e.target.value)}
-              className="px-3 py-1.5 rounded-lg text-xs cursor-pointer"
-              style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)' }}
-            >
-              <option value="">Todos os clientes</option>
-              {inputs.map(i => (
-                <option key={i.id} value={i.name}>{i.name}</option>
-              ))}
-            </select>
+            <div className="flex items-center gap-1.5">
+              <label
+                htmlFor="dashboard-instance-filter"
+                className="text-[10px] font-semibold uppercase tracking-widest"
+                style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
+              >
+                Cliente
+              </label>
+              <select
+                id="dashboard-instance-filter"
+                aria-label="Filtrar dashboard por cliente"
+                value={selectedInstance}
+                onChange={e => setSelectedInstance(e.target.value)}
+                className="px-3 py-1.5 rounded-lg text-xs cursor-pointer"
+                style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)' }}
+              >
+                <option value="">Todos os clientes</option>
+                {inputs.map(i => (
+                  <option key={i.id} value={i.name}>{i.name}</option>
+                ))}
+              </select>
+            </div>
           )}
           <button
             onClick={() => { void loadStats(selectedInstance); }}
