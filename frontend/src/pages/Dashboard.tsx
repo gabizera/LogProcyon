@@ -89,7 +89,9 @@ export default function Dashboard() {
     return () => clearInterval(id);
   }, [loadStats, selectedInstance]);
 
-  const showSelector = multiTenant && inputs.length > 1;
+  // Show selector whenever there's at least one instance — useful for both
+  // multi-tenant deploys and any NOC running 2+ equipments even in single-tenant.
+  const showSelector = inputs.length >= 1;
 
   if (loading && !stats) {
     return (
