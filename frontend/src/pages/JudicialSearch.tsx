@@ -214,7 +214,7 @@ export default function JudicialSearch() {
               >
                 {result.total > 0
                   ? `${result.total} resultado(s) encontrado(s)`
-                  : 'Nenhum assinante identificado'}
+                  : 'Nenhum assinante identificado nesse intervalo'}
               </span>
             </div>
             <div className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
@@ -244,6 +244,18 @@ export default function JudicialSearch() {
               </div>
             ))}
           </div>
+
+          {/* Empty result — hint the user */}
+          {result.total === 0 && (
+            <div className="px-5 py-8 flex flex-col items-center gap-2 text-center" style={{ background: 'var(--bg-primary)' }}>
+              <p className="text-xs max-w-md" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', lineHeight: 1.7 }}>
+                Nenhum registro NAT/BPA bateu com <strong style={{ color: 'var(--text-secondary)' }}>{result.consulta.ip_publico}:{result.consulta.porta}</strong> dentro desse horário.
+              </p>
+              <p className="text-[11px] max-w-md" style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-mono)', lineHeight: 1.7 }}>
+                Confirme se a data está correta, tente ampliar o intervalo (ex: 00:00–23:59) ou verifique se o IP/porta foram digitados sem espaços.
+              </p>
+            </div>
+          )}
 
           {/* Results list */}
           {result.resultados.map((r, i) => (

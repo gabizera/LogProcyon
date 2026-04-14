@@ -192,9 +192,21 @@ export default function Inputs() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {inputs.length === 0 && (
-            <div className="rounded-xl p-14 flex items-center justify-center" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
-              <span className="text-sm" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Nenhum input configurado.</span>
+          {inputs.length === 0 && !showForm && (
+            <div className="rounded-xl p-14 flex flex-col items-center justify-center gap-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)' }}>
+                <Radio size={20} style={{ color: 'var(--accent-cyan)' }} />
+              </div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+                Nenhum input configurado
+              </p>
+              <p className="text-xs max-w-md text-center" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', lineHeight: 1.6 }}>
+                Cada input define uma fonte de log — equipamento, protocolo, porta e (opcionalmente) IP de origem. Cadastre um pra começar a receber NetFlow ou syslog no collector.
+              </p>
+              <button onClick={() => setShowForm(true)} className="mt-2 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer hover:brightness-110"
+                style={{ background: 'linear-gradient(135deg, var(--accent-cyan), #3b82f6)', color: '#020617', fontFamily: 'var(--font-display)' }}>
+                <Plus size={14} /> Criar primeiro input
+              </button>
             </div>
           )}
           {inputs.map(inp => (

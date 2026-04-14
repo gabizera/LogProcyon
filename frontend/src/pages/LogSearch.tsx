@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Layers } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Layers, Search as SearchIcon } from 'lucide-react';
 import { fetchLogs, type LogEntry, type LogFilters, type LogsResponse } from '../api';
 import FilterBar from '../components/FilterBar';
 import LogTable from '../components/LogTable';
@@ -95,14 +95,20 @@ export default function LogSearch() {
 
       {!result && !loading && (
         <div
-          className="rounded-xl p-16 flex flex-col items-center justify-center gap-2"
+          className="rounded-xl p-14 flex flex-col items-center justify-center gap-3"
           style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}
         >
-          <p className="text-sm" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-display)' }}>
-            Use os filtros acima para buscar logs
+          <div
+            className="w-12 h-12 rounded-xl flex items-center justify-center"
+            style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)' }}
+          >
+            <SearchIcon size={20} style={{ color: 'var(--accent-cyan)' }} />
+          </div>
+          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+            Comece com um filtro
           </p>
-          <p className="text-xs" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-            Preencha os campos desejados e clique em "Buscar"
+          <p className="text-xs max-w-sm text-center" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', lineHeight: 1.6 }}>
+            Informe ao menos um IP, porta, protocolo ou período acima e clique em <strong style={{ color: 'var(--text-secondary)' }}>Buscar</strong>. Dica: clicar nos gráficos do Dashboard também preenche os filtros automaticamente.
           </p>
         </div>
       )}
