@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Radio, Plus, Pencil, Trash2, X, Check, AlertCircle } from 'lucide-react';
 import { fetchInputs, createInput, updateInput, deleteInput, type Input } from '../api';
+import { useAuth } from '../auth';
 
 const EQUIPMENT_TYPES = ['cisco', 'a10', 'nokia', 'hillstone', 'juniper', 'generic'];
 const PROTOCOL_TYPES  = [
@@ -117,6 +118,10 @@ function InputForm({
 }
 
 export default function Inputs() {
+  const { user } = useAuth();
+  const canWrite  = user?.role === 'admin' || user?.role === 'operator';
+  const canDelete = user?.role === 'admin';
+
   const [inputs, setInputs]   = useState<Input[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -157,7 +162,7 @@ export default function Inputs() {
       <div className="title-row">
         <h2>sistema<span className="accent"> / inputs</span></h2>
         <span className="meta">fontes de log configuradas</span>
-        {!showForm && !editing && (
+        {canWrite && !showForm && !editing && (
           <div className="right">
             <button onClick={() => setShowForm(true)} className="topnav-link cursor-pointer flex items-center gap-1.5" style={{ background: 'transparent' }}>
               <Plus size={11} /> NOVO INPUT
@@ -234,14 +239,18 @@ export default function Inputs() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 shrink-0">
-                    <button onClick={() => setEditing(inp)} className="p-1.5 rounded-lg cursor-pointer hover:brightness-125 transition-all"
-                      style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
-                      <Pencil size={13} />
-                    </button>
-                    <button onClick={() => handleDelete(inp.id)} className="p-1.5 rounded-lg cursor-pointer hover:brightness-125 transition-all"
-                      style={{ background: 'rgba(239,68,68,0.08)', color: 'var(--accent-red)', border: '1px solid rgba(239,68,68,0.15)' }}>
-                      <Trash2 size={13} />
-                    </button>
+                    {canWrite && (
+                      <button onClick={() => setEditing(inp)} className="p-1.5 rounded-lg cursor-pointer hover:brightness-125 transition-all"
+                        style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
+                        <Pencil size={13} />
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button onClick={() => handleDelete(inp.id)} className="p-1.5 rounded-lg cursor-pointer hover:brightness-125 transition-all"
+                        style={{ background: 'rgba(239,68,68,0.08)', color: 'var(--accent-red)', border: '1px solid rgba(239,68,68,0.15)' }}>
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
