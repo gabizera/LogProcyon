@@ -89,15 +89,32 @@ export default function Dashboard() {
   return (
     <div className="animate-card">
 
-      {/* ── Page status strip ───────────────────────────────── */}
-      <div className="statusbar" style={{ borderTop: 0 }}>
-        <span className="pill">DASHBOARD</span>
-        <span><span className="k">origem</span><b>{currentInstance}</b></span>
-        <span><span className="k">eventos</span><b className="tabular">{total.toLocaleString('pt-BR')}</b></span>
-        <span><span className="k">taxa</span><b className="tabular">{rate}/min</b></span>
-        <span><span className="k">pico</span><b className="tabular">{peak.count} · {peak.hour ? new Date(peak.hour).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—'}</b></span>
+      {/* ── Title row ───────────────────────────────────────── */}
+      <div className="title-row">
+        <h2>
+          {currentInstance}
+          <span className="accent"> / painel</span>
+        </h2>
+        <span className="meta">
+          atualizado {lastUpdate ? lastUpdate.toLocaleTimeString('pt-BR') : '—'}
+        </span>
         <div className="right">
-          <span><span className="k">atualizado</span><b className="tabular">{lastUpdate ? lastUpdate.toLocaleTimeString('pt-BR') : '—'}</b></span>
+          {showSelector && (
+            <>
+              <label htmlFor="dash-instance" className="sr-only">Filtrar por cliente</label>
+              <select
+                id="dash-instance"
+                aria-label="Filtrar dashboard por cliente"
+                value={selectedInstance}
+                onChange={e => setSelectedInstance(e.target.value)}
+                className="topnav-link cursor-pointer"
+                style={{ background: 'transparent' }}
+              >
+                <option value="">TODAS AS FONTES</option>
+                {inputs.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
+              </select>
+            </>
+          )}
           <button
             onClick={() => loadStats(selectedInstance)}
             className="topnav-link cursor-pointer flex items-center gap-1.5"
@@ -106,31 +123,6 @@ export default function Dashboard() {
             <RefreshCw size={10} /> ATUALIZAR
           </button>
         </div>
-      </div>
-
-      {/* ── Title row ───────────────────────────────────────── */}
-      <div className="title-row">
-        <h2>
-          {currentInstance}
-          <span className="accent"> / painel</span>
-        </h2>
-        <span className="meta">UTC−3 · {new Date().toLocaleDateString('pt-BR')} {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-        {showSelector && (
-          <div className="right">
-            <label htmlFor="dash-instance" className="sr-only">Filtrar por cliente</label>
-            <select
-              id="dash-instance"
-              aria-label="Filtrar dashboard por cliente"
-              value={selectedInstance}
-              onChange={e => setSelectedInstance(e.target.value)}
-              className="topnav-link cursor-pointer"
-              style={{ background: 'transparent' }}
-            >
-              <option value="">TODAS AS FONTES</option>
-              {inputs.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
-            </select>
-          </div>
-        )}
       </div>
 
       {/* ── Readout (5-cell) ────────────────────────────────── */}
@@ -168,7 +160,7 @@ export default function Dashboard() {
         style={{ gridTemplateColumns: '1fr 1fr', borderTop: '1px solid var(--rule-1)' }}
       >
         <TopIpsPanel
-          title="TOP IPs PÚBLICOS"
+          title="TOP IPs PÚBLICOS · ÚLTIMAS 24H"
           rows={stats?.top_ips_publicos ?? []}
           onRowClick={ip => navigate(`/logs?ip_publico=${ip}`)}
           scope={currentInstance}
@@ -176,7 +168,7 @@ export default function Dashboard() {
           className="dashed-r"
         />
         <TopIpsPanel
-          title="TOP IPs PRIVADOS"
+          title="TOP IPs PRIVADOS · ÚLTIMAS 24H"
           rows={stats?.top_ips_privados ?? []}
           onRowClick={ip => navigate(`/logs?ip_privado=${ip}`)}
           scope={currentInstance}
