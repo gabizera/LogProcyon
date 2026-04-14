@@ -14,6 +14,26 @@ const inputStyle: React.CSSProperties = {
 };
 
 type FormData = Omit<CgnatPool, 'id' | 'created_at'>;
+
+const CLIENTS_PER_IP_OPTIONS = [
+  { value: 4,   label: '4 clientes · ~16000 portas por cliente' },
+  { value: 8,   label: '8 clientes · ~8000 portas por cliente'  },
+  { value: 16,  label: '16 clientes · ~4000 portas por cliente' },
+  { value: 32,  label: '32 clientes · ~2000 portas por cliente' },
+  { value: 64,  label: '64 clientes · ~1000 portas por cliente' },
+  { value: 128, label: '128 clientes · ~500 portas (não recomendado)' },
+  { value: 256, label: '256 clientes · ~256 portas (não recomendado)'  },
+];
+
+// Deriva chains_count e ports_per_client a partir de clientes_por_ip + first_port.
+// Mesma lógica do gerador Remontti: cada cliente recebe o teto de portas
+// disponíveis (65535 - first_port + 1) / clientes_por_ip.
+function derive(clientsPerIp: number, firstPort: number) {
+  const availablePorts = 65535 - firstPort + 1;
+  const portsPerClient = Math.floor(availablePorts / clientsPerIp);
+  return { chains_count: clientsPerIp, ports_per_client: portsPerClient };
+}
+
 const emptyForm: FormData = {
   equipamento_origem: '',
   private_pool_start: '100.64.0.0',
@@ -34,6 +54,17 @@ function PoolForm({ initial, onSave, onCancel, instances }: {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const set = <K extends keyof FormData>(k: K, v: FormData[K]) => setForm(p => ({ ...p, [k]: v }));
+
+  // Ajusta ports_per_client e chains_count sempre que o usuário muda
+  // clientes_por_ip ou first_port.
+  const setClientsPerIp = (n: number) => {
+    const d = derive(n, form.first_port);
+    setForm(p => ({ ...p, chains_count: d.chains_count, ports_per_client: d.ports_per_client }));
+  };
+  const setFirstPort = (n: number) => {
+    const d = derive(form.chains_count, n);
+    setForm(p => ({ ...p, first_port: n, ports_per_client: d.ports_per_client }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,15 +106,15 @@ function PoolForm({ initial, onSave, onCancel, instances }: {
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Porta Inicial *</label>
-          <input type="number" min={1} max={65535} value={form.first_port} onChange={e => set('first_port', parseInt(e.target.value) || 0)} required className="rounded-lg px-3 py-2" style={inputStyle} />
+          <input type="number" min={1} max={65535} value={form.first_port} onChange={e => setFirstPort(parseInt(e.target.value) || 0)} required className="rounded-lg px-3 py-2" style={inputStyle} />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Portas por Cliente *</label>
-          <input type="number" min={1} max={65535} value={form.ports_per_client} onChange={e => set('ports_per_client', parseInt(e.target.value) || 0)} required className="rounded-lg px-3 py-2" style={inputStyle} />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Qtd. Chains *</label>
-          <input type="number" min={1} max={1024} value={form.chains_count} onChange={e => set('chains_count', parseInt(e.target.value) || 0)} required className="rounded-lg px-3 py-2" style={inputStyle} />
+          <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Clientes por IP *</label>
+          <select value={form.chains_count} onChange={e => setClientsPerIp(parseInt(e.target.value))} className="rounded-lg px-3 py-2" style={inputStyle}>
+            {CLIENTS_PER_IP_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 
