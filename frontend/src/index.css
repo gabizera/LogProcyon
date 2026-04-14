@@ -312,8 +312,9 @@ input:focus, select:focus, textarea:focus {
   border-bottom: 1px solid var(--rule-1);
 }
 .readout .cell {
-  padding: 14px 20px 14px 0;
+  padding: 14px 20px;
   border-right: 1px dashed var(--rule-2);
+  text-align: center;
 }
 .readout .cell:last-child { border-right: none; }
 .readout .cell .k {
