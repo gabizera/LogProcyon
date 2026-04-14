@@ -10,6 +10,17 @@ export interface JwtUser {
   allowed_instances?: string[];
 }
 
+/**
+ * Normalize any ISO-ish date string to ClickHouse DateTime64(3) literal:
+ * "2026-04-14 11:50:00.000". Accepts "2026-04-14T11:50" (datetime-local),
+ * full ISO "2026-04-14T11:50:00.000Z", and plain dates.
+ */
+function toClickhouseTs(value: string): string {
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value; // let ClickHouse raise if truly invalid
+  return d.toISOString().replace('T', ' ').replace('Z', '').slice(0, 23);
+}
+
 @Injectable()
 export class LogsService {
   private readonly logger = new Logger(LogsService.name);
@@ -77,11 +88,11 @@ export class LogsService {
     }
     if (dto.start_date) {
       conditions.push('timestamp >= {start_date:DateTime64(3)}');
-      params.start_date = dto.start_date;
+      params.start_date = toClickhouseTs(dto.start_date);
     }
     if (dto.end_date) {
       conditions.push('timestamp <= {end_date:DateTime64(3)}');
-      params.end_date = dto.end_date;
+      params.end_date = toClickhouseTs(dto.end_date);
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -148,9 +159,6 @@ export class LogsService {
       ORDER BY src.timestamp DESC
       LIMIT 50
     `;
-
-    const toClickhouseTs = (iso: string) =>
-      new Date(iso).toISOString().replace('T', ' ').replace('Z', '').slice(0, 23);
 
     const params: Record<string, unknown> = {
       ip_publico: dto.ip_publico,
@@ -254,11 +262,11 @@ export class LogsService {
 
     if (dto.start_date) {
       conditions.push('timestamp >= {start_date:DateTime64(3)}');
-      params.start_date = dto.start_date;
+      params.start_date = toClickhouseTs(dto.start_date);
     }
     if (dto.end_date) {
       conditions.push('timestamp <= {end_date:DateTime64(3)}');
-      params.end_date = dto.end_date;
+      params.end_date = toClickhouseTs(dto.end_date);
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
