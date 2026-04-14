@@ -1,5 +1,5 @@
 import { Controller, Get, Put, Body } from '@nestjs/common';
-import { ConfigService } from './config.service';
+import { ConfigService, MULTI_TENANT_MODE } from './config.service';
 import { Roles } from '../auth/roles.decorator';
 import { Public } from '../auth/public.decorator';
 import { IsNumber, IsOptional, IsString, Min, Max } from 'class-validator';
@@ -38,7 +38,10 @@ export class ConfigController {
   @Get('public')
   getPublicConfig() {
     const config = this.configService.getConfig();
-    return { platform_name: config.platform_name };
+    return {
+      platform_name: config.platform_name,
+      multi_tenant_mode: MULTI_TENANT_MODE,
+    };
   }
 
   @Put()

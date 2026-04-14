@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsIn, MinLength, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsIn, MinLength, MaxLength, IsArray } from 'class-validator';
 
 export class CreateUserDto {
   @IsString()
@@ -19,6 +19,11 @@ export class CreateUserDto {
   @IsString()
   @MaxLength(64)
   name?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  allowed_instances?: string[];
 }
 
 export class UpdateUserDto {
@@ -36,4 +41,9 @@ export class UpdateUserDto {
   @IsString()
   @MaxLength(64)
   name?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  allowed_instances?: string[];
 }

@@ -9,6 +9,7 @@ export interface User {
   username: string;
   name: string;
   role: string;
+  allowed_instances: string[];
   created_at: string;
   password_hash?: string;
 }
@@ -34,7 +35,8 @@ export class UsersService implements OnModuleInit {
   private load() {
     try {
       if (fs.existsSync(this.filePath)) {
-        this.users = JSON.parse(fs.readFileSync(this.filePath, 'utf8'));
+        const raw: User[] = JSON.parse(fs.readFileSync(this.filePath, 'utf8'));
+        this.users = raw.map(u => ({ ...u, allowed_instances: u.allowed_instances ?? [] }));
         this.logger.log(`Loaded ${this.users.length} users`);
       }
     } catch (e) {
@@ -59,6 +61,7 @@ export class UsersService implements OnModuleInit {
       username: 'admin',
       name: 'Administrator',
       role: 'admin',
+      allowed_instances: [],
       created_at: new Date().toISOString(),
       password_hash: hash,
     };
@@ -92,6 +95,7 @@ export class UsersService implements OnModuleInit {
       username: dto.username,
       name: dto.name ?? dto.username,
       role: dto.role ?? 'operator',
+      allowed_instances: dto.allowed_instances ?? [],
       created_at: new Date().toISOString(),
       password_hash: hash,
     };

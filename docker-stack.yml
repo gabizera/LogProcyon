@@ -1,0 +1,94 @@
+version: "3.8"
+
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    environment:
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - /opt/log/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - procyon_net
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  collector:
+    image: logprocyon-collector:latest
+    environment:
+      - CLICKHOUSE_URL=http://clickhouse:8123
+      - LISTEN_PORT=514
+      - BATCH_SIZE=100
+      - FLUSH_INTERVAL=2000
+      - TZ_OFFSET_HOURS=-3
+      - DATA_DIR=/data
+    volumes:
+      - logdata:/data
+    networks:
+      - procyon_net
+    ports:
+      - target: 514
+        published: 514
+        protocol: udp
+        mode: host
+      - target: 2055
+        published: 2055
+        protocol: udp
+        mode: host
+      - target: 9995
+        published: 9995
+        protocol: udp
+        mode: host
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  backend:
+    image: logprocyon-backend:latest
+    environment:
+      - CLICKHOUSE_URL=http://clickhouse:8123
+      - DATA_DIR=/data
+      - JWT_SECRET=${JWT_SECRET}
+      - CORS_ORIGINS=https://log.procyontecnologia.net
+      - MULTI_TENANT_MODE=${MULTI_TENANT_MODE:-false}
+    volumes:
+      - logdata:/data
+    networks:
+      - procyon_net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  frontend:
+    image: logprocyon-frontend:latest
+    networks:
+      - procyon_net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.logprocyon.rule=Host(`log.procyontecnologia.net`)"
+        - "traefik.http.routers.logprocyon.entrypoints=websecure"
+        - "traefik.http.routers.logprocyon.tls=true"
+        - "traefik.http.routers.logprocyon.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.logprocyon.loadbalancer.server.port=80"
+
+volumes:
+  clickhouse_data:
+  logdata:
+
+networks:
+  procyon_net:
+    external: true

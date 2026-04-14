@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Database, CalendarDays, Globe, MonitorSmartphone, RefreshCw, BarChart3 } from 'lucide-react';
-import { fetchStats, type StatsResponse } from '../api';
+import { fetchStats, fetchInputs, fetchPublicConfig, type StatsResponse, type Input } from '../api';
 import { VolumeLineChart, TopBarChart, DistributionPieChart } from '../components/Charts';
 
 function StatCard({ icon: Icon, label, value, color, index }: {
@@ -53,10 +53,13 @@ export default function Dashboard() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [multiTenant, setMultiTenant] = useState(false);
+  const [inputs, setInputs] = useState<Input[]>([]);
+  const [selectedInstance, setSelectedInstance] = useState<string>('');
 
-  const loadStats = useCallback(async () => {
+  const loadStats = useCallback(async (instance?: string) => {
     try {
-      const data = await fetchStats();
+      const data = await fetchStats(instance || undefined);
       setStats(data);
       setError(null);
       setLastUpdate(new Date());
@@ -69,10 +72,24 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    loadStats();
-    const id = setInterval(loadStats, 30000);
+    (async () => {
+      try {
+        const [cfg, ins] = await Promise.all([fetchPublicConfig(), fetchInputs()]);
+        setMultiTenant(cfg.multi_tenant_mode);
+        setInputs(ins);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    loadStats(selectedInstance);
+    const id = setInterval(() => loadStats(selectedInstance), 30000);
     return () => clearInterval(id);
-  }, [loadStats]);
+  }, [loadStats, selectedInstance]);
+
+  const showSelector = multiTenant && inputs.length > 1;
 
   if (loading && !stats) {
     return (
@@ -90,7 +107,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-center h-full">
         <div className="rounded-xl p-8 max-w-sm text-center" style={{ background: 'var(--bg-card)', border: '1px solid rgba(239,68,68,0.2)' }}>
           <p className="text-sm mb-4" style={{ color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>{error}</p>
-          <button onClick={loadStats} className="px-4 py-2 rounded-lg text-xs font-medium cursor-pointer hover:brightness-110" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-medium)', fontFamily: 'var(--font-display)' }}>
+          <button onClick={() => { void loadStats(selectedInstance); }} className="px-4 py-2 rounded-lg text-xs font-medium cursor-pointer hover:brightness-110" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-medium)', fontFamily: 'var(--font-display)' }}>
             Tentar novamente
           </button>
         </div>
@@ -108,7 +125,7 @@ export default function Dashboard() {
   return (
     <div className="p-6 max-w-7xl">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 gap-4">
         <div>
           <h2 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Dashboard</h2>
           {lastUpdate && (
@@ -117,14 +134,29 @@ export default function Dashboard() {
             </span>
           )}
         </div>
-        <button
-          onClick={loadStats}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer hover:brightness-110"
-          style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)' }}
-        >
-          <RefreshCw size={12} />
-          Atualizar
-        </button>
+        <div className="flex items-center gap-2">
+          {showSelector && (
+            <select
+              value={selectedInstance}
+              onChange={e => setSelectedInstance(e.target.value)}
+              className="px-3 py-1.5 rounded-lg text-xs cursor-pointer"
+              style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)' }}
+            >
+              <option value="">Todos os clientes</option>
+              {inputs.map(i => (
+                <option key={i.id} value={i.name}>{i.name}</option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={() => { void loadStats(selectedInstance); }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer hover:brightness-110"
+            style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)' }}
+          >
+            <RefreshCw size={12} />
+            Atualizar
+          </button>
+        </div>
       </div>
 
       {error && (

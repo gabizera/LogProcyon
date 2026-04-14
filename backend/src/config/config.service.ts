@@ -14,6 +14,9 @@ const DEFAULT_CONFIG: AppConfig = {
   retention_months: 15,
 };
 
+export const MULTI_TENANT_MODE =
+  (process.env.MULTI_TENANT_MODE || '').toLowerCase() === 'true';
+
 @Injectable()
 export class ConfigService implements OnModuleInit {
   private readonly logger = new Logger(ConfigService.name);

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, HttpCode, Request } from '@nestjs/common';
 import { InputsService } from './inputs.service';
 import { CreateInputDto, UpdateInputDto } from './dto/input.dto';
 import { Roles } from '../auth/roles.decorator';
@@ -8,10 +8,12 @@ export class InputsController {
   constructor(private readonly inputsService: InputsService) {}
 
   @Get()
-  findAll() { return this.inputsService.findAll(); }
+  findAll(@Request() req: any) { return this.inputsService.findAllForUser(req.user); }
 
   @Get(':id')
-  findOne(@Param('id') id: string) { return this.inputsService.findOne(id); }
+  findOne(@Param('id') id: string, @Request() req: any) {
+    return this.inputsService.findOne(id, req.user);
+  }
 
   @Post()
   @Roles('admin', 'operator')

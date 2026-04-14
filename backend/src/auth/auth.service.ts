@@ -13,7 +13,12 @@ export class AuthService {
     const user = await this.usersService.validateCredentials(username, password);
     if (!user) throw new UnauthorizedException('Credenciais inválidas');
 
-    const payload = { sub: user.id, username: user.username, role: user.role };
+    const payload = {
+      sub: user.id,
+      username: user.username,
+      role: user.role,
+      allowed_instances: user.allowed_instances ?? [],
+    };
     return {
       access_token: this.jwtService.sign(payload),
       user,

@@ -1,16 +1,51 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { ClickhouseService } from '../clickhouse/clickhouse.service';
 import { SearchLogsDto, StatsQueryDto, JudicialQueryDto } from './dto/search-logs.dto';
+import { InputsService } from '../inputs/inputs.service';
+import { MULTI_TENANT_MODE } from '../config/config.service';
+
+export interface JwtUser {
+  sub: string;
+  role: string;
+  allowed_instances?: string[];
+}
 
 @Injectable()
 export class LogsService {
   private readonly logger = new Logger(LogsService.name);
 
-  constructor(private readonly clickhouse: ClickhouseService) {}
+  constructor(
+    private readonly clickhouse: ClickhouseService,
+    private readonly inputsService: InputsService,
+  ) {}
 
-  async search(dto: SearchLogsDto) {
+  /**
+   * Returns the list of instance names (equipamento_origem) the user can access,
+   * or null if no filter should be applied (admin, single-tenant mode, or no restriction).
+   * Throws ForbiddenException when the user has no accessible instances.
+   */
+  private resolveTenantNames(user?: JwtUser): string[] | null {
+    if (!MULTI_TENANT_MODE) return null;
+    if (!user || user.role === 'admin') return null;
+    const allowed = user.allowed_instances ?? [];
+    if (allowed.length === 0) throw new ForbiddenException('Usuário sem instances permitidas');
+    const names = this.inputsService
+      .findAll()
+      .filter(i => allowed.includes(i.id))
+      .map(i => i.name);
+    if (names.length === 0) throw new ForbiddenException('Usuário sem instances permitidas');
+    return names;
+  }
+
+  async search(dto: SearchLogsDto, user?: JwtUser) {
     const conditions: string[] = [];
     const params: Record<string, unknown> = {};
+
+    const tenantNames = this.resolveTenantNames(user);
+    if (tenantNames) {
+      conditions.push('equipamento_origem IN {tenant_names:Array(String)}');
+      params.tenant_names = tenantNames;
+    }
 
     if (dto.ip_publico) {
       conditions.push('ip_publico = {ip_publico:IPv4}');
@@ -84,7 +119,12 @@ export class LogsService {
     };
   }
 
-  async judicialSearch(dto: JudicialQueryDto) {
+  async judicialSearch(dto: JudicialQueryDto, user?: JwtUser) {
+    const tenantNames = this.resolveTenantNames(user);
+    const tenantClause = tenantNames
+      ? 'AND src.equipamento_origem IN {tenant_names:Array(String)}'
+      : '';
+
     // Busca o cliente que estava usando ip_publico:porta dentro do período informado
     // Para BPA: porta_publica <= porta < porta_publica + tamanho_bloco
     const sql = `
@@ -104,6 +144,7 @@ export class LogsService {
         AND (src.porta_publica + src.tamanho_bloco) > {porta:UInt16}
         AND src.timestamp >= {ts_inicio:DateTime64(3)}
         AND src.timestamp <= {ts_fim:DateTime64(3)}
+        ${tenantClause}
       ORDER BY src.timestamp DESC
       LIMIT 50
     `;
@@ -111,12 +152,15 @@ export class LogsService {
     const toClickhouseTs = (iso: string) =>
       new Date(iso).toISOString().replace('T', ' ').replace('Z', '').slice(0, 23);
 
-    const rows = await this.clickhouse.query(sql, {
+    const params: Record<string, unknown> = {
       ip_publico: dto.ip_publico,
       porta:      dto.porta,
       ts_inicio:  toClickhouseTs(dto.data_inicio),
       ts_fim:     toClickhouseTs(dto.data_fim),
-    });
+    };
+    if (tenantNames) params.tenant_names = tenantNames;
+
+    const rows = await this.clickhouse.query(sql, params);
 
     return {
       consulta: {
@@ -141,7 +185,13 @@ export class LogsService {
     return rows[0];
   }
 
-  async getStorage() {
+  async getStorage(user?: JwtUser) {
+    const tenantNames = this.resolveTenantNames(user);
+    const whereTenant = tenantNames
+      ? 'WHERE equipamento_origem IN {tenant_names:Array(String)}'
+      : '';
+    const paramsTenant: Record<string, unknown> = tenantNames ? { tenant_names: tenantNames } : {};
+
     // Logs por dia com estimativa de tamanho
     const dailySql = `
       SELECT
@@ -149,6 +199,7 @@ export class LogsService {
         count() AS total,
         sum(length(payload_raw)) AS payload_bytes
       FROM nat_logs
+      ${whereTenant}
       GROUP BY dia
       ORDER BY dia DESC
       LIMIT 90
@@ -164,9 +215,12 @@ export class LogsService {
       WHERE table = 'nat_logs' AND active = 1
     `;
 
+    // system.parts não tem dado por equipamento; para tenants, estimamos bytes pelo payload_raw
     const [daily, disk] = await Promise.all([
-      this.clickhouse.query(dailySql, {}),
-      this.clickhouse.query<{ compressed: number; uncompressed: number; rows: number }>(diskSql, {}),
+      this.clickhouse.query(dailySql, paramsTenant),
+      tenantNames
+        ? Promise.resolve([{ compressed: 0, uncompressed: 0, rows: 0 }])
+        : this.clickhouse.query<{ compressed: number; uncompressed: number; rows: number }>(diskSql, {}),
     ]);
 
     return {
@@ -179,9 +233,24 @@ export class LogsService {
     };
   }
 
-  async getStats(dto: StatsQueryDto) {
+  async getStats(dto: StatsQueryDto, user?: JwtUser) {
     const conditions: string[] = [];
     const params: Record<string, unknown> = {};
+
+    const tenantNames = this.resolveTenantNames(user);
+    if (tenantNames) {
+      conditions.push('equipamento_origem IN {tenant_names:Array(String)}');
+      params.tenant_names = tenantNames;
+    } else if (dto.equipamento_origem) {
+      // Optional explicit filter (dashboard dropdown) — admins / single-tenant only
+      conditions.push('equipamento_origem = {equipamento_origem:String}');
+      params.equipamento_origem = dto.equipamento_origem;
+    }
+    // When user is tenant-scoped but also picks a dropdown value, intersect
+    if (tenantNames && dto.equipamento_origem && tenantNames.includes(dto.equipamento_origem)) {
+      conditions.push('equipamento_origem = {equipamento_origem:String}');
+      params.equipamento_origem = dto.equipamento_origem;
+    }
 
     if (dto.start_date) {
       conditions.push('timestamp >= {start_date:DateTime64(3)}');

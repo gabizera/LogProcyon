@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users as UsersIcon, Plus, Trash2, X, Check, AlertCircle, KeyRound } from 'lucide-react';
-import { fetchUsers, createUser, updateUser, deleteUser, type User } from '../api';
+import { Users as UsersIcon, Plus, Trash2, X, Check, AlertCircle, KeyRound, Shield } from 'lucide-react';
+import { fetchUsers, createUser, updateUser, deleteUser, fetchInputs, fetchPublicConfig, type User, type Input } from '../api';
 
 const ROLE_LABELS: Record<string, { label: string; color: string }> = {
   admin:    { label: 'Admin',    color: 'var(--accent-amber)'  },
@@ -8,13 +8,26 @@ const ROLE_LABELS: Record<string, { label: string; color: string }> = {
   viewer:   { label: 'Viewer',   color: 'var(--text-secondary)'},
 };
 
-function CreateForm({ onSave, onCancel }: {
-  onSave: (f: { username: string; password: string; role: string; name: string }) => Promise<void>;
+function CreateForm({ onSave, onCancel, multiTenant, inputs }: {
+  onSave: (f: { username: string; password: string; role: string; name: string; allowed_instances: string[] }) => Promise<void>;
   onCancel: () => void;
+  multiTenant: boolean;
+  inputs: Input[];
 }) {
-  const [form, setForm] = useState({ username: '', password: '', role: 'operator', name: '' });
+  const [form, setForm] = useState<{ username: string; password: string; role: string; name: string; allowed_instances: string[] }>({
+    username: '', password: '', role: 'operator', name: '', allowed_instances: [],
+  });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+
+  const toggleInstance = (id: string) => {
+    setForm(p => ({
+      ...p,
+      allowed_instances: p.allowed_instances.includes(id)
+        ? p.allowed_instances.filter(x => x !== id)
+        : [...p.allowed_instances, id],
+    }));
+  };
 
   const inputStyle: React.CSSProperties = {
     background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)',
@@ -39,7 +52,7 @@ function CreateForm({ onSave, onCancel }: {
         ].map(f => (
           <div key={f.key} className="flex flex-col gap-1.5">
             <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{f.label}</label>
-            <input value={(form as Record<string, string>)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+            <input value={(form as unknown as Record<string, string>)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
               placeholder={f.placeholder} required={f.key === 'username'} className="rounded-lg px-3 py-2" style={inputStyle} />
           </div>
         ))}
@@ -57,6 +70,44 @@ function CreateForm({ onSave, onCancel }: {
           </select>
         </div>
       </div>
+
+      {multiTenant && form.role !== 'admin' && (
+        <div className="mb-4">
+          <label className="text-[10px] font-semibold uppercase tracking-widest flex items-center gap-1.5 mb-2" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            <Shield size={11} /> Clientes permitidos
+          </label>
+          {inputs.length === 0 ? (
+            <div className="text-xs" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+              Nenhuma instance cadastrada ainda.
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {inputs.map(i => {
+                const selected = form.allowed_instances.includes(i.id);
+                return (
+                  <button
+                    key={i.id}
+                    type="button"
+                    onClick={() => toggleInstance(i.id)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all"
+                    style={{
+                      background: selected ? 'rgba(6,182,212,0.15)' : 'var(--bg-tertiary)',
+                      color: selected ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                      border: `1px solid ${selected ? 'rgba(6,182,212,0.4)' : 'var(--border-subtle)'}`,
+                      fontFamily: 'var(--font-mono)',
+                    }}
+                  >
+                    {selected ? '✓ ' : ''}{i.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <div className="text-[10px] mt-1.5" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            Vazio = sem acesso. Admins veem tudo.
+          </div>
+        </div>
+      )}
 
       {err && <div className="mb-3 flex items-center gap-2 text-xs" style={{ color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}><AlertCircle size={13} />{err}</div>}
 
@@ -117,14 +168,27 @@ export default function UsersPage() {
   const [showForm, setShowForm]   = useState(false);
   const [changePwd, setChangePwd] = useState<User | null>(null);
   const [error, setError]         = useState('');
+  const [multiTenant, setMultiTenant] = useState(false);
+  const [inputs, setInputs] = useState<Input[]>([]);
 
   const load = useCallback(async () => {
-    try { setUsers(await fetchUsers()); setError(''); }
-    catch { setError('Erro ao carregar usuários'); }
+    try {
+      const [u, ins, cfg] = await Promise.all([
+        fetchUsers(),
+        fetchInputs().catch(() => [] as Input[]),
+        fetchPublicConfig().catch(() => ({ platform_name: '', multi_tenant_mode: false })),
+      ]);
+      setUsers(u);
+      setInputs(ins);
+      setMultiTenant(cfg.multi_tenant_mode);
+      setError('');
+    } catch { setError('Erro ao carregar usuários'); }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const instanceNameById = (id: string) => inputs.find(i => i.id === id)?.name ?? id;
 
   const handleCreate = async (form: Parameters<typeof createUser>[0]) => {
     await createUser(form);
@@ -168,7 +232,7 @@ export default function UsersPage() {
         </div>
       )}
 
-      {showForm && <CreateForm onSave={handleCreate} onCancel={() => setShowForm(false)} />}
+      {showForm && <CreateForm onSave={handleCreate} onCancel={() => setShowForm(false)} multiTenant={multiTenant} inputs={inputs} />}
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
@@ -179,7 +243,7 @@ export default function UsersPage() {
           <table className="w-full text-sm" style={{ fontFamily: 'var(--font-display)' }}>
             <thead>
               <tr style={{ background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border-subtle)' }}>
-                {['Usuário', 'Nome', 'Perfil', 'Criado em', 'Ações'].map(h => (
+                {(['Usuário', 'Nome', 'Perfil', ...(multiTenant ? ['Clientes'] : []), 'Criado em', 'Ações']).map(h => (
                   <th key={h} className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-widest whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>{h}</th>
                 ))}
               </tr>
@@ -194,6 +258,17 @@ export default function UsersPage() {
                     <td className="px-4 py-3">
                       <span className="badge" style={{ color: roleInfo.color, background: roleInfo.color + '14', border: `1px solid ${roleInfo.color}22` }}>{roleInfo.label}</span>
                     </td>
+                    {multiTenant && (
+                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                        {u.role === 'admin' ? (
+                          <span style={{ color: 'var(--accent-amber)' }}>todos</span>
+                        ) : (u.allowed_instances ?? []).length === 0 ? (
+                          <span style={{ color: 'var(--accent-red)' }}>nenhum</span>
+                        ) : (
+                          <span>{(u.allowed_instances ?? []).map(instanceNameById).join(', ')}</span>
+                        )}
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                       {new Date(u.created_at).toLocaleDateString('pt-BR')}
                     </td>

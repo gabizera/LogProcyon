@@ -70,6 +70,7 @@ export interface User {
   username: string;
   name: string;
   role: string;
+  allowed_instances?: string[];
   created_at: string;
 }
 
@@ -79,10 +80,18 @@ export interface AppConfig {
   retention_months: number;
 }
 
+export interface PublicConfig {
+  platform_name: string;
+  multi_tenant_mode: boolean;
+}
+
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
-export async function fetchStats(): Promise<StatsResponse> {
-  const { data } = await api.get('/logs/stats');
+export async function fetchStats(equipamento_origem?: string): Promise<StatsResponse> {
+  const qs = equipamento_origem
+    ? `?equipamento_origem=${encodeURIComponent(equipamento_origem)}`
+    : '';
+  const { data } = await api.get(`/logs/stats${qs}`);
   return {
     total_logs:              data.total          ?? 0,
     logs_hoje:               data.today          ?? 0,
@@ -154,12 +163,12 @@ export async function fetchUsers(): Promise<User[]> {
   return data;
 }
 
-export async function createUser(dto: { username: string; password: string; role?: string; name?: string }): Promise<User> {
+export async function createUser(dto: { username: string; password: string; role?: string; name?: string; allowed_instances?: string[] }): Promise<User> {
   const { data } = await api.post('/users', dto);
   return data;
 }
 
-export async function updateUser(id: string, dto: { password?: string; role?: string; name?: string }): Promise<User> {
+export async function updateUser(id: string, dto: { password?: string; role?: string; name?: string; allowed_instances?: string[] }): Promise<User> {
   const { data } = await api.put(`/users/${id}`, dto);
   return data;
 }
@@ -172,6 +181,11 @@ export async function deleteUser(id: string): Promise<void> {
 
 export async function fetchConfig(): Promise<AppConfig> {
   const { data } = await api.get('/config');
+  return data;
+}
+
+export async function fetchPublicConfig(): Promise<PublicConfig> {
+  const { data } = await api.get('/config/public');
   return data;
 }
 

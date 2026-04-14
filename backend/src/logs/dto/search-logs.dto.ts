@@ -83,4 +83,8 @@ export class StatsQueryDto {
   @IsOptional()
   @IsDateString()
   end_date?: string;
+
+  @IsOptional()
+  @IsString()
+  equipamento_origem?: string;
 }

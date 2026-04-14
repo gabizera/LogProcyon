@@ -1,7 +1,14 @@
-import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException, OnModuleInit } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { CreateInputDto, UpdateInputDto } from './dto/input.dto';
+import { MULTI_TENANT_MODE } from '../config/config.service';
+
+interface JwtUser {
+  sub: string;
+  role: string;
+  allowed_instances?: string[];
+}
 
 export interface Input {
   id: string;
@@ -60,9 +67,21 @@ export class InputsService implements OnModuleInit {
     return this.inputs;
   }
 
-  findOne(id: string): Input {
+  findAllForUser(user?: JwtUser): Input[] {
+    if (!MULTI_TENANT_MODE || !user || user.role === 'admin') return this.inputs;
+    const allowed = user.allowed_instances ?? [];
+    return this.inputs.filter(i => allowed.includes(i.id));
+  }
+
+  findOne(id: string, user?: JwtUser): Input {
     const input = this.inputs.find(i => i.id === id);
     if (!input) throw new NotFoundException(`Input ${id} not found`);
+    if (MULTI_TENANT_MODE && user && user.role !== 'admin') {
+      const allowed = user.allowed_instances ?? [];
+      if (!allowed.includes(input.id)) {
+        throw new ForbiddenException('Sem acesso a esta instance');
+      }
+    }
     return input;
   }
 
