@@ -29,17 +29,24 @@ module.exports = {
     const line = buf.toString('utf8', 0, Math.min(buf.length, 2048));
     const ts = new Date(Date.now() + tzOffsetMs).toISOString().replace('T', ' ').replace('Z', '').slice(0, 23);
 
-    // Formato NAT444 session-based
+    // Formato NAT444 session-based. Os dois números após o IP público são
+    // porta INICIAL e porta FINAL do bloco alocado — normalizamos pra
+    // (min, max) e armazenamos como porta_publica + tamanho_bloco no schema
+    // padrão, compatível com os BPA do Cisco.
     const m = line.match(NAT444_RE);
     if (m) {
       const protoNum = parseInt(m[1], 10);
+      const a = parseInt(m[4], 10);
+      const b = parseInt(m[5], 10);
+      const portaInicio = Math.min(a, b);
+      const portaFim    = Math.max(a, b);
       return [{
         timestamp:          ts,
         ip_publico:         m[3],
         ip_privado:         m[2],
-        porta_publica:      parseInt(m[5], 10),
-        porta_privada:      parseInt(m[4], 10),
-        tamanho_bloco:      0,
+        porta_publica:      portaInicio,
+        porta_privada:      0,
+        tamanho_bloco:      portaFim - portaInicio + 1,
         protocolo:          PROTO_MAP[protoNum] || String(protoNum),
         tipo_nat:           'nat444',
         equipamento_origem: config?.name || 'hillstone',
