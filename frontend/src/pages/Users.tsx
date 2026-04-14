@@ -311,7 +311,7 @@ export default function UsersPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const instanceNameById = (id: string) => inputs.find(i => i.id === id)?.name ?? id;
+  const instanceNameById = (id: string) => inputs.find(i => i.id === id)?.name ?? null;
 
   const handleCreate = async (form: Parameters<typeof createUser>[0]) => {
     await createUser(form);
@@ -393,7 +393,22 @@ export default function UsersPage() {
                         ) : (u.allowed_instances ?? []).length === 0 ? (
                           <span style={{ color: 'var(--accent-red)' }}>nenhum</span>
                         ) : (
-                          <span>{(u.allowed_instances ?? []).map(instanceNameById).join(', ')}</span>
+                          <span className="inline-flex flex-wrap gap-1">
+                            {(u.allowed_instances ?? []).map(id => {
+                              const name = instanceNameById(id);
+                              return name ? (
+                                <span key={id}>{name}</span>
+                              ) : (
+                                <span key={id} style={{ color: 'var(--accent-red)', fontStyle: 'italic' }} title="Esta instance foi removida do sistema — edite o usuário para limpar">
+                                  instance removida
+                                </span>
+                              );
+                            }).reduce<React.ReactNode[]>((acc, el, i) => {
+                              if (i > 0) acc.push(<span key={`sep-${i}`}>, </span>);
+                              acc.push(el);
+                              return acc;
+                            }, [])}
+                          </span>
                         )}
                       </td>
                     )}
