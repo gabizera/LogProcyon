@@ -26,6 +26,7 @@ export interface LogFilters {
   ip_privado?: string;
   protocolo?: string;
   tipo_nat?: string;
+  equipamento_origem?: string;
   start_date?: string;
   end_date?: string;
   page?: number;

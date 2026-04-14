@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
-import type { LogFilters } from '../api';
+import { fetchInputs, type LogFilters, type Input } from '../api';
 
 interface FilterBarProps {
   onApply: (filters: LogFilters) => void;
@@ -27,9 +27,20 @@ export default function FilterBar({ onApply, onClear, initial }: FilterBarProps)
     ip_privado: initial?.ip_privado ?? '',
     protocolo: initial?.protocolo ?? '',
     tipo_nat: initial?.tipo_nat ?? '',
+    equipamento_origem: initial?.equipamento_origem ?? '',
     start_date: initial?.start_date ?? '',
     end_date: initial?.end_date ?? '',
   });
+  const [instances, setInstances] = useState<Input[]>([]);
+
+  useEffect(() => {
+    fetchInputs().then(setInstances).catch(() => setInstances([]));
+  }, []);
+
+  // Keep internal state in sync when parent changes filters (e.g. URL → autoSearch)
+  useEffect(() => {
+    setFilters(prev => ({ ...prev, ...(initial ?? {}) }));
+  }, [initial]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -41,7 +52,7 @@ export default function FilterBar({ onApply, onClear, initial }: FilterBarProps)
   };
 
   const handleClear = () => {
-    const empty = { ip_publico: '', ip_privado: '', protocolo: '', tipo_nat: '', start_date: '', end_date: '' };
+    const empty = { ip_publico: '', ip_privado: '', protocolo: '', tipo_nat: '', equipamento_origem: '', start_date: '', end_date: '' };
     setFilters(empty);
     onClear();
   };
@@ -88,6 +99,16 @@ export default function FilterBar({ onApply, onClear, initial }: FilterBarProps)
             <option value="estatico">Estático</option>
             <option value="cgnat">CGNAT</option>
             <option value="bpa">BPA</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-semibold uppercase tracking-wider" style={labelStyle}>Equipamento</label>
+          <select name="equipamento_origem" value={filters.equipamento_origem} onChange={handleChange} className={inputClass} style={inputStyle}>
+            <option value="">Todos</option>
+            {instances.map(i => (
+              <option key={i.id} value={i.name}>{i.name}</option>
+            ))}
           </select>
         </div>
 
