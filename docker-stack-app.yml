@@ -8,6 +8,8 @@ services:
     image: logprocyon-backend:latest
     environment:
       - CLICKHOUSE_URL=http://clickhouse:8123
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
       - DATA_DIR=/data
       - JWT_SECRET=${JWT_SECRET}
       - CORS_ORIGINS=https://log.procyontecnologia.net

@@ -58,7 +58,7 @@ export class InputsService implements OnModuleInit {
     try {
       const dir = path.dirname(this.filePath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(this.filePath, JSON.stringify(this.inputs, null, 2));
+      fs.writeFileSync(this.filePath, JSON.stringify(this.inputs, null, 2), { mode: 0o600 });
     } catch (e) {
       this.logger.error('Could not save inputs: ' + e.message);
     }

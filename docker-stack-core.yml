@@ -8,7 +8,7 @@ services:
     image: clickhouse/clickhouse-server:latest
     environment:
       - CLICKHOUSE_USER=default
-      - CLICKHOUSE_PASSWORD=
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
       - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
     volumes:
       - log_clickhouse_store:/var/lib/clickhouse
@@ -30,6 +30,8 @@ services:
     image: logprocyon-collector:latest
     environment:
       - CLICKHOUSE_URL=http://clickhouse:8123
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
       - LISTEN_PORT=514
       - BATCH_SIZE=100
       - FLUSH_INTERVAL=2000

@@ -1,27 +1,27 @@
 #!/bin/bash
-# LogProcyon — Sync iptables allowlist from inputs.json
+# LogProcyon — Sync nftables allowlist from inputs.json
 #
-# Lê inputs.json do volume do backend e regenera uma chain LOGPROCYON
-# com regras que só permitem UDP nas portas cadastradas vindas dos
-# source_ips declarados. Pacotes fora dessa lista são descartados antes
-# de chegarem aos containers Docker.
+# Lê inputs.json do volume do backend e regenera a tabela nft
+# 'logprocyon' com regras que só permitem UDP nas portas cadastradas
+# vindas dos source_ips declarados. Pacotes fora dessa lista são
+# descartados no hook prerouting, antes de chegarem aos containers.
 #
-# Idempotente: pode rodar quantas vezes quiser. Chamado via systemd path
-# unit quando inputs.json muda.
+# Idempotente: pode rodar quantas vezes quiser. Chamado via systemd
+# path unit quando inputs.json muda.
 
 set -euo pipefail
 
-CHAIN="LOGPROCYON"
-VOLUME_PATH="${VOLUME_PATH:-/var/lib/docker/volumes/log-core_log_shared/_data/inputs.json}"
+TABLE="logprocyon"
+VOLUME_PATH="${VOLUME_PATH:-/var/lib/docker/volumes/log_shared/_data/inputs.json}"
 
 if [ ! -f "$VOLUME_PATH" ]; then
   echo "[sync-firewall] inputs.json não encontrado em $VOLUME_PATH"
   exit 0
 fi
 
-# Parser sem jq pra não depender: usa python3 que já vem em tudo
+# Parse inputs.json com python3 (sem depender de jq)
 mapfile -t RULES < <(python3 -c "
-import json, sys
+import json
 data = json.load(open('$VOLUME_PATH'))
 seen = set()
 for i in data:
@@ -35,55 +35,46 @@ for i in data:
     print(f'{ip} {port}')
 ")
 
-# Também coletamos as portas distintas (pra aplicar drop na porta só se
-# houver pelo menos uma regra de allow — evita trancar acidentalmente).
+# Coleta portas distintas pra saber quais proteger (drop default)
 declare -A PORTS_USED
 for r in "${RULES[@]}"; do
   port="${r##* }"
   PORTS_USED[$port]=1
 done
 
-# (Re)cria a chain
-if iptables -n -L "$CHAIN" >/dev/null 2>&1; then
-  iptables -F "$CHAIN"
-else
-  iptables -N "$CHAIN"
-fi
+# Gera ruleset completo e aplica atomicamente via stdin
+{
+  echo "table inet $TABLE {"
+  echo "  chain allowlist {"
+  # prerouting prio -300 (antes de qualquer coisa do docker que usa prio 0+)
+  echo "    type filter hook prerouting priority -300; policy accept;"
+  # loopback e redes privadas sempre ok
+  echo "    iif \"lo\" accept"
+  echo "    ip saddr 127.0.0.0/8 accept"
+  echo "    ip saddr 10.0.0.0/8 accept"
+  echo "    ip saddr 172.16.0.0/12 accept"
+  echo "    ip saddr 192.168.0.0/16 accept"
 
-# Garante que DOCKER-USER referencia nossa chain (Docker processa
-# DOCKER-USER antes das regras automáticas de NAT, então isso pega
-# tráfego antes de chegar nos containers).
-if ! iptables -C DOCKER-USER -j "$CHAIN" 2>/dev/null; then
-  iptables -I DOCKER-USER -j "$CHAIN"
-fi
+  # Allow por IP+porta cadastrados
+  for r in "${RULES[@]}"; do
+    ip="${r%% *}"
+    port="${r##* }"
+    echo "    udp dport $port ip saddr $ip accept"
+  done
 
-# Sempre libera tráfego já estabelecido / relacionado
-iptables -A "$CHAIN" -m conntrack --ctstate RELATED,ESTABLISHED -j RETURN
+  # Drop nas portas que estão guardadas
+  for port in "${!PORTS_USED[@]}"; do
+    echo "    udp dport $port drop"
+  done
 
-# Libera loopback e redes privadas (containers se comunicam por
-# 172.x/10.x/192.168.x dentro do Docker)
-iptables -A "$CHAIN" -s 127.0.0.0/8 -j RETURN
-iptables -A "$CHAIN" -s 10.0.0.0/8 -j RETURN
-iptables -A "$CHAIN" -s 172.16.0.0/12 -j RETURN
-iptables -A "$CHAIN" -s 192.168.0.0/16 -j RETURN
+  echo "  }"
+  echo "}"
+} > /tmp/logprocyon-firewall.nft
 
-# Allow por IP+porta cadastrados
-for r in "${RULES[@]}"; do
-  ip="${r%% *}"
-  port="${r##* }"
-  iptables -A "$CHAIN" -p udp -s "$ip" --dport "$port" -j RETURN
-  echo "[sync-firewall] allow udp/$port from $ip"
-done
+# Remove tabela antiga (se existir) e aplica nova atomicamente
+nft delete table inet $TABLE 2>/dev/null || true
+nft -f /tmp/logprocyon-firewall.nft
 
-# Drop final: só para as portas que temos allow. Tudo que não matched
-# antes é dropado silenciosamente (sem REJECT pra não sinalizar ao
-# atacante que a porta existe).
-for port in "${!PORTS_USED[@]}"; do
-  iptables -A "$CHAIN" -p udp --dport "$port" -j DROP
-  echo "[sync-firewall] drop udp/$port (default)"
-done
-
-# Outras portas/protocolos: fall-through (RETURN para próxima chain)
-iptables -A "$CHAIN" -j RETURN
-
-echo "[sync-firewall] done — ${#RULES[@]} allow rules, ${#PORTS_USED[@]} guarded ports"
+echo "[sync-firewall] applied — ${#RULES[@]} allow rules, ${#PORTS_USED[@]} guarded ports"
+for r in "${RULES[@]}"; do echo "[sync-firewall]   allow $r"; done
+for p in "${!PORTS_USED[@]}"; do echo "[sync-firewall]   drop  udp/$p (default)"; done

@@ -8,14 +8,20 @@ export class ClickhouseService implements OnModuleDestroy {
 
   constructor() {
     const url = process.env.CLICKHOUSE_URL || 'http://clickhouse:8123';
+    const username = process.env.CLICKHOUSE_USER || 'default';
+    const password = process.env.CLICKHOUSE_PASSWORD || '';
     this.client = createClient({
       url,
+      username,
+      password,
       request_timeout: 30_000,
       clickhouse_settings: {
         output_format_json_quote_64bit_integers: 0,
       },
     });
-    this.logger.log(`ClickHouse client configured for ${url}`);
+    // Não loga password nem URL completa — só host e user
+    const host = url.replace(/^https?:\/\//, '').split('/')[0];
+    this.logger.log(`ClickHouse client → ${host} (user=${username})`);
   }
 
   async query<T = Record<string, unknown>>(

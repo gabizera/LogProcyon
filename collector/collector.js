@@ -15,7 +15,9 @@ const http   = require('http');
 const fs     = require('fs');
 const path   = require('path');
 
-const CLICKHOUSE_URL = process.env.CLICKHOUSE_URL  || 'http://clickhouse:8123';
+const CLICKHOUSE_URL      = process.env.CLICKHOUSE_URL      || 'http://clickhouse:8123';
+const CLICKHOUSE_USER     = process.env.CLICKHOUSE_USER     || 'default';
+const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD || '';
 const BATCH_SIZE     = parseInt(process.env.BATCH_SIZE     || '100', 10);
 const FLUSH_INTERVAL = parseInt(process.env.FLUSH_INTERVAL || '2000', 10);
 const DATA_DIR       = process.env.DATA_DIR        || '/data';
@@ -50,12 +52,19 @@ function insertBatch(rows) {
   const query = 'INSERT INTO nat_logs (timestamp,ip_publico,ip_privado,porta_publica,porta_privada,protocolo,tipo_nat,equipamento_origem,payload_raw,tamanho_bloco) FORMAT JSONEachRow';
   const url   = new URL(CLICKHOUSE_URL);
 
+  const headers = {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(body),
+    'X-ClickHouse-User': CLICKHOUSE_USER,
+  };
+  if (CLICKHOUSE_PASSWORD) headers['X-ClickHouse-Key'] = CLICKHOUSE_PASSWORD;
+
   const options = {
     hostname: url.hostname,
     port:     url.port || 8123,
     path:     `/?query=${encodeURIComponent(query)}`,
     method:   'POST',
-    headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    headers,
   };
 
   const req = http.request(options, res => {

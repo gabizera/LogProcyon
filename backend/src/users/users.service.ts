@@ -55,7 +55,12 @@ export class UsersService implements OnModuleInit {
   }
 
   private async seed() {
-    const hash = await bcrypt.hash('admin123', 10);
+    // Gera senha aleatória forte no primeiro boot. A senha só aparece UMA
+    // vez nos logs do container — o operador precisa capturar do
+    // `docker service logs log-app_backend` e trocar pela UI.
+    // Nunca temos uma senha default conhecida.
+    const rand = (await import('crypto')).randomBytes(18).toString('base64url');
+    const hash = await bcrypt.hash(rand, 12);
     const admin: User = {
       id: crypto.randomUUID(),
       username: 'admin',
@@ -67,7 +72,12 @@ export class UsersService implements OnModuleInit {
     };
     this.users = [admin];
     this.save();
-    this.logger.log('Seeded default admin user');
+    this.logger.warn('========================================================');
+    this.logger.warn('  INITIAL ADMIN PASSWORD (copy now, will NOT repeat)');
+    this.logger.warn(`  username: admin`);
+    this.logger.warn(`  password: ${rand}`);
+    this.logger.warn('  → Mude a senha imediatamente via UI (Usuários)');
+    this.logger.warn('========================================================');
   }
 
   private sanitize(user: User): Omit<User, 'password_hash'> {
@@ -89,7 +99,7 @@ export class UsersService implements OnModuleInit {
     if (this.users.find(u => u.username === dto.username)) {
       throw new ConflictException(`Username '${dto.username}' already exists`);
     }
-    const hash = await bcrypt.hash(dto.password, 10);
+    const hash = await bcrypt.hash(dto.password, 12);
     const user: User = {
       id: crypto.randomUUID(),
       username: dto.username,
@@ -108,7 +118,7 @@ export class UsersService implements OnModuleInit {
     const idx = this.users.findIndex(u => u.id === id);
     if (idx === -1) throw new NotFoundException(`User ${id} not found`);
     if (dto.password) {
-      (this.users[idx] as User).password_hash = await bcrypt.hash(dto.password, 10);
+      (this.users[idx] as User).password_hash = await bcrypt.hash(dto.password, 12);
     }
     const { password: _, ...rest } = dto;
     this.users[idx] = { ...this.users[idx], ...rest };
