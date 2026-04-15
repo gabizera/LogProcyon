@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { CreateInputDto, UpdateInputDto } from './dto/input.dto';
 import { MULTI_TENANT_MODE } from '../config/config.service';
+import { ClickhouseService } from '../clickhouse/clickhouse.service';
 
 interface JwtUser {
   sub: string;
@@ -28,7 +29,7 @@ export class InputsService implements OnModuleInit {
   private readonly filePath: string;
   private inputs: Input[] = [];
 
-  constructor() {
+  constructor(private readonly clickhouse: ClickhouseService) {
     const dataDir = process.env.DATA_DIR || '/data';
     this.filePath = path.join(dataDir, 'inputs.json');
   }
@@ -102,11 +103,28 @@ export class InputsService implements OnModuleInit {
     return input;
   }
 
-  update(id: string, dto: UpdateInputDto): Input {
+  async update(id: string, dto: UpdateInputDto): Promise<Input> {
     const idx = this.inputs.findIndex(i => i.id === id);
     if (idx === -1) throw new NotFoundException(`Input ${id} not found`);
+    const oldName = this.inputs[idx].name;
     this.inputs[idx] = { ...this.inputs[idx], ...dto };
     this.save();
+
+    // Se o nome mudou, propaga pra todos os nat_logs históricos daquele
+    // equipamento. A mutation roda assíncrona no ClickHouse — não bloqueia
+    // a resposta mesmo em tabelas grandes.
+    const newName = this.inputs[idx].name;
+    if (dto.name && newName !== oldName) {
+      try {
+        await this.clickhouse.command(
+          `ALTER TABLE nat_logs UPDATE equipamento_origem = {new:String} WHERE equipamento_origem = {old:String}`,
+          { new: newName, old: oldName },
+        );
+        this.logger.log(`Renamed nat_logs rows: "${oldName}" → "${newName}"`);
+      } catch (e) {
+        this.logger.error(`Falha ao renomear nat_logs: ${(e as Error).message}`);
+      }
+    }
     return this.inputs[idx];
   }
 

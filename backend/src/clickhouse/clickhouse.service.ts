@@ -30,6 +30,10 @@ export class ClickhouseService implements OnModuleDestroy {
     return result.json<T>();
   }
 
+  async command(sql: string, params?: Record<string, unknown>): Promise<void> {
+    await this.client.command({ query: sql, query_params: params });
+  }
+
   async insert(table: string, values: Record<string, unknown>[]): Promise<void> {
     if (values.length === 0) return;
     await this.client.insert({
