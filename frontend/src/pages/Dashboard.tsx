@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, Radio } from 'lucide-react';
-import { fetchStats, fetchInputs, fetchPublicConfig, type StatsResponse, type Input } from '../api';
+import { fetchStats, fetchInputs, type StatsResponse, type Input } from '../api';
 
 const RANGE_PRESETS: { value: number; label: string; short: string }[] = [
   { value: 1,    label: '1 MIN',  short: '1m'  },
@@ -18,7 +18,6 @@ export default function Dashboard() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [multiTenant, setMultiTenant] = useState(false);
   const [inputs, setInputs] = useState<Input[]>([]);
   const [selectedInstance, setSelectedInstance] = useState<string>('');
   const [rangeMinutes, setRangeMinutes] = useState<number>(1440);
@@ -38,13 +37,7 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const [cfg, ins] = await Promise.all([fetchPublicConfig(), fetchInputs()]);
-        setMultiTenant(cfg.multi_tenant_mode);
-        setInputs(ins);
-      } catch (e) { console.error(e); }
-    })();
+    fetchInputs().then(setInputs).catch(e => console.error(e));
   }, []);
 
   useEffect(() => {
@@ -87,8 +80,6 @@ export default function Dashboard() {
   const privIps = stats?.ips_privados_unicos ?? 0;
 
   const volume = (stats?.volume_24h ?? []).map(v => ({ hour: String(v.hora ?? ''), count: Number(v.total ?? 0) }));
-
-  const peak = volume.reduce((acc, v) => (v.count > acc.count ? v : acc), { hour: '—', count: 0 });
   const rate = volume.length > 0 ? (volume.reduce((s, v) => s + v.count, 0) / volume.length).toFixed(1) : '0.0';
 
   // Quando nada está selecionado, mostramos "todas as fontes" explicitamente

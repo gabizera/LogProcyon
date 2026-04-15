@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Save, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Save, CheckCircle2, AlertCircle } from 'lucide-react';
 import { fetchConfig, updateConfig, type AppConfig } from '../api';
 
 const TZ_OPTIONS = [

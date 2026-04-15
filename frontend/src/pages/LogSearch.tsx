@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Layers, Search as SearchIcon } from 'lucide-react';
+import { Search as SearchIcon } from 'lucide-react';
 import { fetchLogs, type LogEntry, type LogFilters, type LogsResponse } from '../api';
 import FilterBar from '../components/FilterBar';
 import LogTable from '../components/LogTable';

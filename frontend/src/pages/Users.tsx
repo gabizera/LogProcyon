@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users as UsersIcon, Plus, Trash2, X, Check, AlertCircle, KeyRound, Shield, Pencil } from 'lucide-react';
+import { Plus, Trash2, X, Check, AlertCircle, KeyRound, Shield, Pencil } from 'lucide-react';
 import { fetchUsers, createUser, updateUser, deleteUser, fetchInputs, fetchPublicConfig, type User, type Input } from '../api';
 
 const ROLE_LABELS: Record<string, { label: string; color: string }> = {
