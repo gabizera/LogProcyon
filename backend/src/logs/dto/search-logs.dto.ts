@@ -1,12 +1,16 @@
 import { IsOptional, IsString, IsInt, Min, Max, IsDateString } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
+
+const trim = () => Transform(({ value }) => typeof value === 'string' ? value.trim() : value);
 
 export class SearchLogsDto {
   @IsOptional()
+  @trim()
   @IsString()
   ip_publico?: string;
 
   @IsOptional()
+  @trim()
   @IsString()
   ip_privado?: string;
 
@@ -59,6 +63,7 @@ export class SearchLogsDto {
 }
 
 export class JudicialQueryDto {
+  @trim()
   @IsString()
   ip_publico: string;
 
