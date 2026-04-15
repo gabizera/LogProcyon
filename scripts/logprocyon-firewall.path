@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch inputs.json for changes and resync firewall
+
+[Path]
+PathModified=/var/lib/docker/volumes/log-core_log_shared/_data/inputs.json
+Unit=logprocyon-firewall.service
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=LogProcyon firewall allowlist sync
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/log/scripts/sync-firewall.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

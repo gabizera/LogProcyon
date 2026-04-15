@@ -124,23 +124,20 @@ function openSocket(port, portInputs) {
 
   server.on('message', (msg, rinfo) => {
     try {
-      // Route by source IP first, then any-IP fallback
+      // Allowlist: só aceita pacotes de source_ip cadastrado explicitamente.
+      // Inputs com source_ip vazio (catch-all) ainda funcionam, mas são o
+      // caminho perigoso: qualquer IP random da internet bate neles. Usar
+      // somente em ambiente controlado.
       const entry = sockets.get(port);
       const list  = entry ? entry.inputs : portInputs;
-      let matched = list.find(i => i.source_ip && i.source_ip === rinfo.address);
-      if (!matched) matched = list.find(i => !i.source_ip);
-      if (!matched) matched = list[0];
+      const matched = list.find(i => i.source_ip && i.source_ip === rinfo.address)
+                   || list.find(i => !i.source_ip);
 
-      // Diagnostic: when a packet from an unknown IP falls back to a
-      // generic/default match, log it once per minute per remote IP so the
-      // operator can see what address is actually arriving.
-      if (matched && matched.source_ip && matched.source_ip !== rinfo.address) {
-        // exact source_ip didn't match — packet came from an unregistered IP
+      if (!matched) {
+        // Pacote de source IP desconhecido — descarta silenciosamente e
+        // loga rate-limited pra ajudar o operador a ver quem tá tentando.
         logUnmatched(rinfo.address);
-      } else if (matched && !matched.source_ip) {
-        // matched a catch-all instance
-      } else if (matched === DEFAULT_INPUT) {
-        logUnmatched(rinfo.address);
+        return;
       }
 
       const parser = getParser(matched);
