@@ -7,9 +7,11 @@ services:
   clickhouse:
     image: clickhouse/clickhouse-server:latest
     environment:
+      # Senha obrigatória — fica em /opt/log/.env (gitignored). O
+      # entrypoint gera users.d/default-user.xml com a senha a cada boot.
       - CLICKHOUSE_USER=default
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
-      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+      - CLICKHOUSE_ACCESS_MANAGEMENT=1
     volumes:
       - log_clickhouse_store:/var/lib/clickhouse
       - /opt/log/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
