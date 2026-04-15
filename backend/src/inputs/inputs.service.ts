@@ -21,6 +21,7 @@ export interface Input {
   description: string;
   enabled: boolean;
   created_at: string;
+  archived_at?: string | null;
 }
 
 @Injectable()
@@ -66,6 +67,11 @@ export class InputsService implements OnModuleInit {
 
   findAll(): Input[] {
     return this.inputs;
+  }
+
+  /** Apenas não-arquivados — base pro Dashboard, Logs, Stats. */
+  findAllActive(): Input[] {
+    return this.inputs.filter(i => !i.archived_at);
   }
 
   findAllForUser(user?: JwtUser): Input[] {
@@ -128,6 +134,36 @@ export class InputsService implements OnModuleInit {
     return this.inputs[idx];
   }
 
+  /**
+   * Soft delete — marca como arquivado. Mantém row em nat_logs intacto
+   * pra consulta judicial. Dashboard/Logs/Stats passam a filtrar. O
+   * firewall nft é re-sincronizado automaticamente pelo path unit
+   * porque inputs.json é reescrito.
+   */
+  archive(id: string): Input {
+    const idx = this.inputs.findIndex(i => i.id === id);
+    if (idx === -1) throw new NotFoundException(`Input ${id} not found`);
+    this.inputs[idx].archived_at = new Date().toISOString();
+    this.inputs[idx].enabled = false;
+    this.save();
+    return this.inputs[idx];
+  }
+
+  /** Restaura um input arquivado — readiciona ao Dashboard e firewall. */
+  restore(id: string): Input {
+    const idx = this.inputs.findIndex(i => i.id === id);
+    if (idx === -1) throw new NotFoundException(`Input ${id} not found`);
+    this.inputs[idx].archived_at = null;
+    this.inputs[idx].enabled = true;
+    this.save();
+    return this.inputs[idx];
+  }
+
+  /**
+   * Remoção permanente — apaga o Input do JSON. Usa só quando o
+   * operator quer limpar definitivamente depois de já ter arquivado
+   * e baixado o backup. NÃO limpa nat_logs.
+   */
   remove(id: string): void {
     const idx = this.inputs.findIndex(i => i.id === id);
     if (idx === -1) throw new NotFoundException(`Input ${id} not found`);

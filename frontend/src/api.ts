@@ -56,6 +56,7 @@ export interface LogsResponse {
 }
 
 export interface Input {
+  archived_at?: string | null;
   id: string;
   name: string;
   equipment_type: string;
@@ -154,8 +155,8 @@ export async function fetchLogs(filters: LogFilters): Promise<LogsResponse> {
 
 // ── Inputs ────────────────────────────────────────────────────────────────────
 
-export async function fetchInputs(): Promise<Input[]> {
-  const { data } = await api.get('/inputs');
+export async function fetchInputs(includeArchived = false): Promise<Input[]> {
+  const { data } = await api.get(`/inputs${includeArchived ? '?include_archived=1' : ''}`);
   return data;
 }
 
@@ -169,8 +170,19 @@ export async function updateInput(id: string, dto: Partial<Omit<Input, 'id' | 'c
   return data;
 }
 
-export async function deleteInput(id: string): Promise<void> {
+/** Soft delete — arquivar. Dado fica em nat_logs pra busca judicial. */
+export async function archiveInput(id: string): Promise<void> {
   await api.delete(`/inputs/${id}`);
+}
+
+export async function restoreInput(id: string): Promise<Input> {
+  const { data } = await api.put(`/inputs/${id}/restore`, {});
+  return data;
+}
+
+/** Remoção definitiva (admin) — apaga Input do JSON. Não toca nat_logs. */
+export async function purgeInput(id: string): Promise<void> {
+  await api.delete(`/inputs/${id}/purge`);
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────────

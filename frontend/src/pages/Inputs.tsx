@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Radio, Plus, Pencil, Trash2, X, Check, AlertCircle } from 'lucide-react';
-import { fetchInputs, createInput, updateInput, deleteInput, fetchPublicConfig, type Input } from '../api';
+import { fetchInputs, createInput, updateInput, archiveInput, restoreInput, fetchPublicConfig, type Input } from '../api';
 import { useAuth } from '../auth';
 
 const EQUIPMENT_TYPES = ['cisco', 'a10', 'nokia', 'hillstone', 'juniper', 'generic'];
@@ -135,7 +135,6 @@ function InputForm({
 export default function Inputs() {
   const { user } = useAuth();
   const canWrite  = user?.role === 'admin' || user?.role === 'operator';
-  const canDelete = user?.role === 'admin';
 
   const [inputs, setInputs]   = useState<Input[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,9 +147,11 @@ export default function Inputs() {
     fetchPublicConfig().then(cfg => setIngestIp(cfg.ingest_ip ?? '')).catch(() => {});
   }, []);
 
+  const [showArchived, setShowArchived] = useState(false);
+
   const load = useCallback(async () => {
     try {
-      setInputs(await fetchInputs());
+      setInputs(await fetchInputs(true));
       setError('');
     } catch { setError('Erro ao carregar inputs'); }
     finally { setLoading(false); }
@@ -171,9 +172,14 @@ export default function Inputs() {
     setEditing(null);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Remover este input?')) return;
-    await deleteInput(id);
+  const handleArchive = async (id: string) => {
+    if (!confirm('Arquivar este input? Os dados permanecem no histórico pra busca judicial mas somem do dashboard.')) return;
+    await archiveInput(id);
+    await load();
+  };
+
+  const handleRestore = async (id: string) => {
+    await restoreInput(id);
     await load();
   };
 
@@ -227,7 +233,7 @@ export default function Inputs() {
               </button>
             </div>
           )}
-          {inputs.map(inp => (
+          {inputs.filter(i => !i.archived_at).map(inp => (
             <div key={inp.id}>
               {editing?.id === inp.id ? (
                 <InputForm
@@ -238,11 +244,9 @@ export default function Inputs() {
                 />
               ) : (
                 <div className="rounded-xl px-5 py-4 flex items-center gap-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
-                  {/* Status dot */}
                   <div className={`w-2 h-2 rounded-full shrink-0 ${inp.enabled ? 'live-dot' : ''}`}
                     style={{ background: inp.enabled ? 'var(--accent-green)' : 'var(--text-dim)' }} />
 
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>{inp.name}</span>
@@ -258,7 +262,6 @@ export default function Inputs() {
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex items-center gap-2 shrink-0">
                     {canWrite && (
                       <button onClick={() => setEditing(inp)} className="p-1.5 rounded-lg cursor-pointer hover:brightness-125 transition-all"
@@ -266,8 +269,8 @@ export default function Inputs() {
                         <Pencil size={13} />
                       </button>
                     )}
-                    {canDelete && (
-                      <button onClick={() => handleDelete(inp.id)} className="p-1.5 rounded-lg cursor-pointer hover:brightness-125 transition-all"
+                    {canWrite && (
+                      <button onClick={() => handleArchive(inp.id)} title="Arquivar" className="p-1.5 rounded-lg cursor-pointer hover:brightness-125 transition-all"
                         style={{ background: 'rgba(239,68,68,0.08)', color: 'var(--accent-red)', border: '1px solid rgba(239,68,68,0.15)' }}>
                         <Trash2 size={13} />
                       </button>
@@ -277,6 +280,40 @@ export default function Inputs() {
               )}
             </div>
           ))}
+
+          {inputs.some(i => i.archived_at) && (
+            <div className="mt-6">
+              <button
+                onClick={() => setShowArchived(v => !v)}
+                className="text-[10px] uppercase tracking-widest cursor-pointer mb-3"
+                style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', background: 'transparent', border: 'none' }}
+              >
+                {showArchived ? '▾' : '▸'} arquivados ({inputs.filter(i => i.archived_at).length})
+              </button>
+              {showArchived && inputs.filter(i => i.archived_at).map(inp => (
+                <div key={inp.id} className="rounded-xl px-5 py-3 flex items-center gap-4 mb-2" style={{ background: 'var(--bg-card)', border: '1px dashed var(--border-subtle)', opacity: 0.75 }}>
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: 'var(--text-dim)' }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm truncate" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-display)' }}>{inp.name}</span>
+                      <span className="text-[9px] uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                        arquivado {inp.archived_at ? new Date(inp.archived_at).toLocaleDateString('pt-BR') : ''}
+                      </span>
+                    </div>
+                    <div className="text-[11px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                      :{inp.port} · {inp.source_ip || '—'} · {inp.equipment_type}
+                    </div>
+                  </div>
+                  {canWrite && (
+                    <button onClick={() => handleRestore(inp.id)} className="p-1.5 rounded-lg cursor-pointer hover:brightness-125 text-[10px] uppercase tracking-widest px-3"
+                      style={{ background: 'var(--bg-tertiary)', color: 'var(--signal)', border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)' }}>
+                      restaurar
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

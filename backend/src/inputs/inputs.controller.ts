@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, HttpCode, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, HttpCode, Request, Query } from '@nestjs/common';
 import { InputsService } from './inputs.service';
 import { CreateInputDto, UpdateInputDto } from './dto/input.dto';
 import { Roles } from '../auth/roles.decorator';
@@ -8,7 +8,11 @@ export class InputsController {
   constructor(private readonly inputsService: InputsService) {}
 
   @Get()
-  findAll(@Request() req: any) { return this.inputsService.findAllForUser(req.user); }
+  findAll(@Request() req: any, @Query('include_archived') includeArchived?: string) {
+    const all = this.inputsService.findAllForUser(req.user);
+    if (includeArchived === '1' || includeArchived === 'true') return all;
+    return all.filter(i => !i.archived_at);
+  }
 
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req: any) {
@@ -25,8 +29,25 @@ export class InputsController {
     return this.inputsService.update(id, dto);
   }
 
+  @Put(':id/restore')
+  @Roles('admin', 'operator')
+  restore(@Param('id') id: string) {
+    return this.inputsService.restore(id);
+  }
+
+  /**
+   * DELETE vira soft-delete (archive). Dado fica em nat_logs pra
+   * busca judicial, Input some do Dashboard/Logs/dropdown. Use
+   * /inputs/:id/purge pra remoção definitiva do JSON.
+   */
   @Delete(':id')
+  @Roles('admin', 'operator')
+  archive(@Param('id') id: string) {
+    return this.inputsService.archive(id);
+  }
+
+  @Delete(':id/purge')
   @Roles('admin')
   @HttpCode(204)
-  remove(@Param('id') id: string) { this.inputsService.remove(id); }
+  purge(@Param('id') id: string) { this.inputsService.remove(id); }
 }

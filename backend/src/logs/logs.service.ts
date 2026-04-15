@@ -56,22 +56,33 @@ export class LogsService {
     const allowed = user.allowed_instances ?? [];
     if (allowed.length === 0) throw new ForbiddenException('Usuário sem instances permitidas');
     const names = this.inputsService
-      .findAll()
+      .findAllActive()
       .filter(i => allowed.includes(i.id))
       .map(i => i.name);
     if (names.length === 0) throw new ForbiddenException('Usuário sem instances permitidas');
     return names;
   }
 
+  /**
+   * Lista de equipamentos visíveis no Dashboard/Logs/Stats — só os
+   * Inputs ativos (não arquivados). Judicial search NÃO usa isso
+   * porque precisa achar rows de equipamentos arquivados/deletados.
+   */
+  private resolveActiveNames(user?: JwtUser): string[] {
+    const tenant = this.resolveTenantNames(user);
+    if (tenant) return tenant;
+    return this.inputsService.findAllActive().map(i => i.name);
+  }
+
   async search(dto: SearchLogsDto, user?: JwtUser) {
     const conditions: string[] = [];
     const params: Record<string, unknown> = {};
 
-    const tenantNames = this.resolveTenantNames(user);
-    if (tenantNames) {
-      conditions.push('equipamento_origem IN {tenant_names:Array(String)}');
-      params.tenant_names = tenantNames;
-    }
+    // Dashboard/Logs só vê equipamentos ativos (não arquivados).
+    // Judicial search usa outra lógica e ignora esse filtro.
+    const activeNames = this.resolveActiveNames(user);
+    conditions.push('equipamento_origem IN {active_names:Array(String)}');
+    params.active_names = activeNames;
 
     if (dto.ip_publico) {
       conditions.push('ip_publico = {ip_publico:IPv4}');
@@ -303,17 +314,15 @@ export class LogsService {
     const conditions: string[] = [];
     const params: Record<string, unknown> = {};
 
-    const tenantNames = this.resolveTenantNames(user);
-    if (tenantNames) {
-      conditions.push('equipamento_origem IN {tenant_names:Array(String)}');
-      params.tenant_names = tenantNames;
-    } else if (dto.equipamento_origem) {
-      // Optional explicit filter (dashboard dropdown) — admins / single-tenant only
-      conditions.push('equipamento_origem = {equipamento_origem:String}');
-      params.equipamento_origem = dto.equipamento_origem;
-    }
-    // When user is tenant-scoped but also picks a dropdown value, intersect
-    if (tenantNames && dto.equipamento_origem && tenantNames.includes(dto.equipamento_origem)) {
+    // Dashboard só considera equipamentos ativos (não arquivados).
+    // Em multi-tenant, intersecta com os permitidos ao user.
+    const activeNames = this.resolveActiveNames(user);
+    conditions.push('equipamento_origem IN {active_names:Array(String)}');
+    params.active_names = activeNames;
+
+    // Dropdown explícito do dashboard restringe a um único equipamento;
+    // só aceita se estiver na lista ativa visível.
+    if (dto.equipamento_origem && activeNames.includes(dto.equipamento_origem)) {
       conditions.push('equipamento_origem = {equipamento_origem:String}');
       params.equipamento_origem = dto.equipamento_origem;
     }
