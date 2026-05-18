@@ -129,12 +129,13 @@ fi
 step "Configurando firewall (ufw)"
 
 if ufw status | grep -q "Status: active"; then
-  ufw allow 80/tcp   comment 'LogProcyon frontend' 2>/dev/null || true
-  ufw allow 514/udp  comment 'LogProcyon collector (NetFlow/Syslog)' 2>/dev/null || true
-  success "Regras adicionadas: 80/tcp, 514/udp"
+  ufw allow 80/tcp           comment 'LogProcyon frontend' 2>/dev/null || true
+  ufw allow 514/udp          comment 'LogProcyon collector (legado)' 2>/dev/null || true
+  ufw allow 20000:20199/udp  comment 'LogProcyon portas dedicadas por cliente' 2>/dev/null || true
+  success "Regras adicionadas: 80/tcp, 514/udp, 20000-20199/udp"
 else
   warn "ufw não está ativo — configure manualmente se necessário"
-  info "  ufw allow 80/tcp && ufw allow 514/udp"
+  info "  ufw allow 80/tcp && ufw allow 514/udp && ufw allow 20000:20199/udp"
 fi
 
 # ── Pull e inicialização ─────────────────────────────────────
@@ -173,11 +174,14 @@ echo -e "${GREEN}${BOLD}╚═════════════════�
 echo ""
 echo -e "  ${BOLD}Acesso:${RESET}       http://${SERVER_IP}"
 echo -e "  ${BOLD}Login:${RESET}        admin"
-echo -e "  ${BOLD}Senha:${RESET}        admin123"
 echo -e "  ${BOLD}Diretório:${RESET}    $INSTALL_DIR"
 echo ""
-echo -e "  ${RED}${BOLD}IMPORTANTE: Troque a senha do admin imediatamente!${RESET}"
-echo -e "  Acesse: Usuários → Trocar senha"
+echo -e "  ${RED}${BOLD}SENHA INICIAL DO ADMIN:${RESET} gerada aleatoriamente no 1º boot e"
+echo -e "  ${RED}${BOLD}exibida UMA única vez nos logs do backend.${RESET} Capture agora:"
+echo ""
+echo -e "    docker logs log-backend 2>&1 | grep -A4 'INITIAL ADMIN PASSWORD'"
+echo ""
+echo -e "  Faça login e troque em ${BOLD}Usuários → Trocar senha${RESET}."
 echo ""
 echo -e "  ${BOLD}Atualizar:${RESET}"
 echo "    cd $INSTALL_DIR && docker compose pull && docker compose up -d"

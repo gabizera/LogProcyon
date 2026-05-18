@@ -248,7 +248,13 @@ docker service logs log-app_backend --tail 10
 
 Abra `https://log.<seu-dominio>.com` no browser.
 
-**Credenciais padrão:** `admin / admin123`
+**Senha inicial do admin:** gerada aleatoriamente no primeiro boot e exibida **uma única vez** nos logs do backend. Não existe senha default. Capture com:
+
+```bash
+docker service logs log-app_backend 2>&1 | grep -A4 'INITIAL ADMIN PASSWORD'
+```
+
+Usuário é `admin`. Se você perdeu a janela do log, veja [OPERATIONS.md → Perdeu a senha do admin](OPERATIONS.md#perdeu-a-senha-do-admin).
 
 **Ações imediatas:**
 
@@ -267,9 +273,10 @@ Se você usa `ufw`:
 ufw allow 22/tcp
 ufw allow 80/tcp
 ufw allow 443/tcp
-ufw allow 514/udp       # syslog / NetFlow padrão
-ufw allow 2055/udp      # NetFlow alternativo (alguns Cisco)
-ufw allow 9995/udp      # NetFlow alternativo (alguns Nokia)
+ufw allow 514/udp           # legado / equipamentos que não trocam porta
+ufw allow 2055/udp          # NetFlow alternativo (alguns Cisco)
+ufw allow 9995/udp          # NetFlow alternativo (alguns Nokia)
+ufw allow 20000:20199/udp   # portas dedicadas por cliente (1 cliente = 1 porta)
 ufw enable
 ```
 

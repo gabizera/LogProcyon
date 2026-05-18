@@ -43,6 +43,15 @@ services:
       - log_shared:/data
     networks:
       - procyon_net
+    # ATENÇÃO — modelo de porta dedicada por cliente (range 20000-20199):
+    # o Swarm em long-form host-mode NÃO aceita range de portas, e o
+    # short-form usa a routing mesh (ingress), que mascara o IP de origem
+    # real — isso quebraria a 2ª camada source_ip do collector.
+    # Para o range dedicado funcionar preservando o IP do cliente, o
+    # collector precisa rodar com HOST NETWORKING. Em VPS single-node a
+    # opção recomendada é o collector bare-metal/host-network (ver
+    # docs/COLLECTOR-BARE-METAL.md). As portas abaixo (host-mode) cobrem
+    # equipamentos legados que só mandam em 514/2055/9995.
     ports:
       - target: 514
         published: 514

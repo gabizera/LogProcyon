@@ -1,7 +1,10 @@
-import { IsString, IsInt, IsBoolean, IsOptional, Min, Max, IsIn } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsInt, IsBoolean, IsOptional, Min, Max, IsIn, IsIP } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
+
+const trim = () => Transform(({ value }) => typeof value === 'string' ? value.trim() : value);
 
 export class CreateInputDto {
+  @trim()
   @IsString()
   name: string;
 
@@ -13,17 +16,24 @@ export class CreateInputDto {
   @IsIn(['netflow_v9', 'ipfix', 'syslog_udp', 'syslog_tcp'])
   protocol_type: string;
 
+  // 2ª camada de isolamento — a porta dedicada já isola o cliente.
+  // Quando definido, o collector só aceita pacotes deste IP nesta porta.
   @IsOptional()
-  @IsString()
+  @trim()
+  @IsIP('4')
   source_ip?: string;
 
+  // Opcional: omitir deixa o backend alocar a próxima porta livre do
+  // range dedicado. Se informado, precisa estar dentro do range e livre.
+  @IsOptional()
   @IsInt()
   @Type(() => Number)
   @Min(1)
   @Max(65535)
-  port: number;
+  port?: number;
 
   @IsOptional()
+  @trim()
   @IsString()
   description?: string;
 
@@ -34,6 +44,7 @@ export class CreateInputDto {
 
 export class UpdateInputDto {
   @IsOptional()
+  @trim()
   @IsString()
   name?: string;
 
@@ -48,7 +59,8 @@ export class UpdateInputDto {
   protocol_type?: string;
 
   @IsOptional()
-  @IsString()
+  @trim()
+  @IsIP('4')
   source_ip?: string;
 
   @IsOptional()
@@ -59,6 +71,7 @@ export class UpdateInputDto {
   port?: number;
 
   @IsOptional()
+  @trim()
   @IsString()
   description?: string;
 

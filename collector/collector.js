@@ -168,19 +168,23 @@ function openSocket(port, portInputs) {
 
   server.on('message', (msg, rinfo) => {
     try {
-      // Allowlist: só aceita pacotes de source_ip cadastrado explicitamente.
-      // Inputs com source_ip vazio (catch-all) ainda funcionam, mas são o
-      // caminho perigoso: qualquer IP random da internet bate neles. Usar
-      // somente em ambiente controlado.
+      // Isolamento por PORTA dedicada: cada cliente tem sua própria porta
+      // (1 input por porta, garantido pelo backend). source_ip, quando
+      // definido, é 2ª camada — rejeita pacote chegando na porta certa
+      // mas de IP não autorizado. SEM catch-all cross-tenant: um pacote
+      // de IP desconhecido nunca cai no input de outro cliente.
       const entry = sockets.get(port);
       const list  = entry ? entry.inputs : portInputs;
-      const matched = list.find(i => i.source_ip && i.source_ip === rinfo.address)
-                   || list.find(i => !i.source_ip);
+      const matched = list.find(i => !i.source_ip || i.source_ip === rinfo.address);
 
       if (!matched) {
-        // Pacote de source IP desconhecido — descarta silenciosamente e
-        // loga rate-limited pra ajudar o operador a ver quem tá tentando.
-        logUnmatched(rinfo.address);
+        if (list.length > 0) {
+          // Porta de um cliente recebendo pacote de IP fora do source_ip
+          // cadastrado — possível spoof ou erro de config no equipamento.
+          logRejected(port, rinfo.address, list[0].name);
+        } else {
+          logUnmatched(rinfo.address);
+        }
         return;
       }
 
@@ -238,8 +242,21 @@ function logUnmatched(ip) {
   const now = Date.now();
   const last = unmatchedSeen.get(ip) || 0;
   if (now - last > 60000) {
-    console.warn(`[collector] unmatched source IP ${ip} — falling back. Register an instance with source_ip=${ip} to separate this traffic.`);
+    console.warn(`[collector] porta sem input configurado recebeu pacote de ${ip} — descartado`);
     unmatchedSeen.set(ip, now);
+  }
+}
+
+// Pacote chegou na porta dedicada de um cliente mas de um IP que não
+// bate com o source_ip cadastrado. Rate-limited por (porta+ip).
+const rejectedSeen = new Map();
+function logRejected(port, ip, inputName) {
+  const key = `${port}:${ip}`;
+  const now = Date.now();
+  const last = rejectedSeen.get(key) || 0;
+  if (now - last > 60000) {
+    console.warn(`[collector][SEGURANÇA] porta ${port} ("${inputName}") rejeitou pacote de ${ip} — IP fora do source_ip cadastrado (possível spoof/erro de config)`);
+    rejectedSeen.set(key, now);
   }
 }
 

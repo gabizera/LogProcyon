@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException, ConflictException, BadRequestException, OnModuleInit } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { CreateInputDto, UpdateInputDto } from './dto/input.dto';
@@ -23,6 +23,12 @@ export interface Input {
   created_at: string;
   archived_at?: string | null;
 }
+
+// Range de portas UDP dedicadas: cada cliente recebe uma porta única.
+// A porta isola o tenant de forma determinística (não depende de
+// source_ip, que é spoofável em UDP). Configurável via env.
+const PORT_MIN = parseInt(process.env.INPUT_PORT_MIN || '20000', 10);
+const PORT_MAX = parseInt(process.env.INPUT_PORT_MAX || '20199', 10);
 
 @Injectable()
 export class InputsService implements OnModuleInit {
@@ -92,20 +98,65 @@ export class InputsService implements OnModuleInit {
     return input;
   }
 
+  /**
+   * Portas em uso por QUALQUER input (inclusive arquivado) — um input
+   * arquivado pode ser restaurado, então sua porta não pode ser reusada
+   * enquanto o registro existir. Só libera no purge.
+   */
+  private portsInUse(exceptId?: string): Set<number> {
+    return new Set(
+      this.inputs.filter(i => i.id !== exceptId).map(i => i.port),
+    );
+  }
+
+  /** Aloca a menor porta livre dentro do range dedicado. */
+  private allocatePort(): number {
+    const used = this.portsInUse();
+    for (let p = PORT_MIN; p <= PORT_MAX; p++) {
+      if (!used.has(p)) return p;
+    }
+    throw new ConflictException(
+      `Range de portas esgotado (${PORT_MIN}-${PORT_MAX}). Faça purge de inputs arquivados ou amplie INPUT_PORT_MAX.`,
+    );
+  }
+
+  private resolvePort(requested: number | undefined, exceptId?: string): number {
+    if (requested == null) return this.allocatePort();
+    if (requested < PORT_MIN || requested > PORT_MAX) {
+      throw new BadRequestException(
+        `Porta ${requested} fora do range dedicado (${PORT_MIN}-${PORT_MAX})`,
+      );
+    }
+    if (this.portsInUse(exceptId).has(requested)) {
+      throw new ConflictException(`Porta ${requested} já está em uso por outro input`);
+    }
+    return requested;
+  }
+
+  private assertNameFree(name: string, exceptId?: string): void {
+    const clash = this.inputs.some(
+      i => i.id !== exceptId && !i.archived_at && i.name === name,
+    );
+    if (clash) throw new ConflictException(`Já existe um input ativo com o nome "${name}"`);
+  }
+
   create(dto: CreateInputDto): Input {
+    this.assertNameFree(dto.name);
+    const port = this.resolvePort(dto.port);
     const input: Input = {
       id: crypto.randomUUID(),
       name: dto.name,
       equipment_type: dto.equipment_type,
       protocol_type: dto.protocol_type,
       source_ip: dto.source_ip ?? '',
-      port: dto.port,
+      port,
       description: dto.description ?? '',
       enabled: dto.enabled ?? true,
       created_at: new Date().toISOString(),
     };
     this.inputs.push(input);
     this.save();
+    this.logger.log(`Input "${input.name}" criado na porta dedicada ${port}`);
     return input;
   }
 
@@ -113,6 +164,10 @@ export class InputsService implements OnModuleInit {
     const idx = this.inputs.findIndex(i => i.id === id);
     if (idx === -1) throw new NotFoundException(`Input ${id} not found`);
     const oldName = this.inputs[idx].name;
+    if (dto.name && dto.name !== oldName) this.assertNameFree(dto.name, id);
+    if (dto.port != null && dto.port !== this.inputs[idx].port) {
+      dto.port = this.resolvePort(dto.port, id);
+    }
     this.inputs[idx] = { ...this.inputs[idx], ...dto };
     this.save();
 

@@ -217,22 +217,24 @@ No modo multi-tenant, cada operator/viewer tem um campo `allowed_instances` que 
 1. Acesse **INPUTS** no menu
 2. **NOVO INPUT**
 3. Preencha:
-   - **Nome** — ex: `002-ASR1002X-BDR-CLIENTE-X` (sugestão: prefixar com o ID do equipamento pra ordenar)
+   - **Nome** — ex: `002-ASR1002X-BDR-CLIENTE-X` (sugestão: prefixar com o ID do equipamento pra ordenar). Nome de input ativo é único.
    - **Equipamento** — `cisco`, `a10`, `nokia`...
    - **Protocolo** — `netflow_v9`, `syslog_udp`, etc.
-   - **IP de origem** — IP público de onde os pacotes chegam (ex: `177.152.109.21`). Campo crítico pro roteamento no collector
-   - **Porta** — 514 pra a maioria dos casos; 2055 ou 9995 se o equipamento não deixa mudar
-4. **Salvar**
+   - **IP de origem** — IP público de onde os pacotes chegam (ex: `177.152.109.21`). Validado como IPv4. É a **2ª camada** de segurança: o collector só aceita pacotes deste IP na porta do cliente.
+   - **Porta** — deixe em branco: o backend **aloca automaticamente uma porta dedicada** do range `20000-20199` (1 cliente = 1 porta). É essa porta que isola o cliente de forma determinística.
+4. **Salvar** — anote a **porta atribuída** que aparece no input
 5. O collector recarrega em ~2s automaticamente (não precisa reiniciar)
+
+> **Mudança importante:** não se usa mais a porta 514 compartilhada por todos. Cada cliente tem sua porta exclusiva. Configure o equipamento do cliente pra enviar NetFlow/syslog pra **a porta atribuída a ele** (não 514). Isso elimina o risco de log de um cliente cair no outro.
 
 No equipamento do cliente, configure:
 
-**Cisco IOS-XE (exemplo NetFlow v9):**
+**Cisco IOS-XE (exemplo NetFlow v9) — use a PORTA ATRIBUÍDA ao cliente, não 514:**
 ```
-ip nat log translations flow-export v9 udp destination <IP-VPS> 514
+ip nat log translations flow-export v9 udp destination <IP-VPS> <PORTA-DO-CLIENTE>
 ```
 
-Firewall: libere porta 514/udp tanto do lado do cliente quanto do lado da VPS (já deve estar liberada pelo `ufw` do passo de instalação).
+Firewall: o range `20000:20199/udp` já é liberado pelo `ufw` no passo de instalação. Libere a porta do cliente também no lado do equipamento.
 
 **Conferir se está chegando:**
 
@@ -409,10 +411,12 @@ Se mudou, volte pro valor original no `.env` e redeploy.
 docker service scale log-app_backend=0
 docker run --rm -v log_shared:/data alpine sh -c "rm /data/users.json"
 docker service scale log-app_backend=1
-# Próximo boot: admin/admin123 será recriado (ver UsersService.seed)
+
+# Próximo boot gera uma NOVA senha aleatória pro admin, exibida uma vez:
+docker service logs log-app_backend 2>&1 | grep -A4 'INITIAL ADMIN PASSWORD'
 ```
 
-Todos os outros usuários serão perdidos — só use isso em emergência.
+Não existe senha default conhecida — a senha é sempre aleatória por boot. Todos os outros usuários serão perdidos — só use isso em emergência.
 
 ### Disco cheio
 
