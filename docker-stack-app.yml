@@ -1,6 +1,11 @@
-# LogProcyon — APP stack
+# ============================================================
+# DEPRECADO — NÃO USE EM PRODUÇÃO.
+# O deploy oficial é via docker-compose.yml (`docker compose up -d`),
+# NÃO Docker Swarm. Motivo: Swarm não lida bem com IPv6. Este arquivo
+# fica só como referência histórica. Ver INSTALL.md.
+# ============================================================
+# LogProcyon — APP stack (Swarm, legado)
 # Backend (NestJS) + Frontend (nginx/React).
-# Atualizado toda hora em deploys normais. Zero impacto no CORE.
 version: "3.8"
 
 services:

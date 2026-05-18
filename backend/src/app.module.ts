@@ -6,8 +6,10 @@ import { InputsModule } from './inputs/inputs.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { CgnatPoolsModule } from './cgnat-pools/cgnat-pools.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [ClickhouseModule, LogsModule, ConfigModule, InputsModule, UsersModule, AuthModule, CgnatPoolsModule],
+  controllers: [HealthController],
 })
 export class AppModule {}
