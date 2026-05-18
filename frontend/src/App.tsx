@@ -35,13 +35,13 @@ const nav: NavItem[] = [
   {
     label: 'CONFIGURAÇÃO',
     match: ['/inputs', '/storage', '/users', '/settings', '/cgnat-pools'],
-    roles: ['admin', 'operator', 'viewer'],
+    roles: ['admin', 'operator'],
     children: [
-      { to: '/inputs',      label: 'INPUTS',        roles: ['admin', 'operator', 'viewer'] },
-      { to: '/cgnat-pools', label: 'MIKROTIK CGNAT', roles: ['admin', 'operator']          },
-      { to: '/storage',     label: 'ARMAZENAMENTO', roles: ['admin', 'operator', 'viewer'] },
-      { to: '/users',       label: 'USUÁRIOS',      roles: ['admin']                       },
-      { to: '/settings',    label: 'CONFIG',        roles: ['admin']                       },
+      { to: '/inputs',      label: 'INPUTS',        roles: ['admin', 'operator'] },
+      { to: '/cgnat-pools', label: 'MIKROTIK CGNAT', roles: ['admin', 'operator'] },
+      { to: '/storage',     label: 'ARMAZENAMENTO', roles: ['admin', 'operator'] },
+      { to: '/users',       label: 'USUÁRIOS',      roles: ['admin']             },
+      { to: '/settings',    label: 'CONFIG',        roles: ['admin']             },
     ],
   },
 ];
@@ -140,8 +140,8 @@ export default function App() {
           <Route path="/"          element={<Dashboard />} />
           <Route path="/logs"      element={<LogSearch />} />
           <Route path="/judicial"  element={<RoleGate role={user.role} allow={['admin', 'operator']}><JudicialSearch /></RoleGate>} />
-          <Route path="/storage"   element={<StoragePage />} />
-          <Route path="/inputs"    element={<Inputs />} />
+          <Route path="/storage"   element={<RoleGate role={user.role} allow={['admin', 'operator']}><StoragePage /></RoleGate>} />
+          <Route path="/inputs"    element={<RoleGate role={user.role} allow={['admin', 'operator']}><Inputs /></RoleGate>} />
           <Route path="/cgnat-pools" element={<RoleGate role={user.role} allow={['admin', 'operator']}><CgnatPools /></RoleGate>} />
           <Route path="/users"     element={<RoleGate role={user.role} allow={['admin']}><UsersPage /></RoleGate>} />
           <Route path="/settings"  element={<RoleGate role={user.role} allow={['admin']}><SettingsPage /></RoleGate>} />

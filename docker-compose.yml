@@ -110,10 +110,12 @@ services:
     mem_limit: 128m
     cpus: 0.5
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:80/ >/dev/null 2>&1 || exit 1"]
+      # 127.0.0.1, não localhost: dentro do nginx:alpine "localhost" não resolve
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1/ -o /dev/null || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 4
+      start_period: 10s
     restart: unless-stopped
 
 volumes:
