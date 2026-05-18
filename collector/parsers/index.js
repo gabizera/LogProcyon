@@ -24,19 +24,21 @@ const parsers = {
 function getParser(inputConfig) {
   const { equipment_type, protocol_type } = inputConfig;
 
-  // Try exact match: equipment_type + protocol_type
+  // 1. Match exato: equipment_type + protocol_type
   const key1 = `${equipment_type}_${protocol_type}`.replace(/-/g, '_');
   if (parsers[key1]) return parsers[key1];
 
-  // Try protocol_type alone
-  const key2 = protocol_type?.replace(/-/g, '_');
-  if (parsers[key2]) return parsers[key2];
-
-  // Try equipment_type alone
+  // 2. Parser ESPECÍFICO do equipamento (hillstone_syslog, a10_syslog...).
+  //    Vem ANTES do protocolo genérico: senão protocol_type=syslog_udp
+  //    cai no parser genérico e ignora o formato do equipamento.
   const key3 = `${equipment_type}_syslog`;
   if (parsers[key3]) return parsers[key3];
 
-  // Fallback to generic
+  // 3. protocol_type sozinho (syslog_udp/tcp → genérico)
+  const key2 = protocol_type?.replace(/-/g, '_');
+  if (parsers[key2]) return parsers[key2];
+
+  // 4. Fallback genérico
   console.warn(`[parsers] No parser for equipment=${equipment_type} protocol=${protocol_type}, using generic`);
   return parsers.generic;
 }

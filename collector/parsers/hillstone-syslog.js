@@ -19,8 +19,13 @@ const generic = require('./syslog-generic');
 
 const PROTO_MAP = { 6: 'TCP', 17: 'UDP', 1: 'ICMP' };
 
-// [proto ip_priv - ip_pub priv_port pub_port - ip_dst dst_port]
+// sessionbased: [proto ip_priv - ip_pub priv_port pub_port - ip_dst dst_port]
 const NAT444_RE = /\[(\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+-\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+)\s+(\d+)\s+-\s+/;
+
+// userbased (alocação de bloco de portas, sem dst):
+//   NAT444:userbasedA [17 100.64.22.82 - 45.185.115.184 - 1536 2047]
+//   = [proto ip_priv - ip_pub - porta_inicio porta_fim]
+const NAT444_USERBASED_RE = /\[(\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+-\s+(\d+\.\d+\.\d+\.\d+)\s+-\s+(\d+)\s+(\d+)\s*\]/;
 
 module.exports = {
   protocol: 'udp',
@@ -33,6 +38,28 @@ module.exports = {
     // porta INICIAL e porta FINAL do bloco alocado — normalizamos pra
     // (min, max) e armazenamos como porta_publica + tamanho_bloco no schema
     // padrão, compatível com os BPA do Cisco.
+    // userbased: bloco de portas alocado (porta_inicio porta_fim, sem dst)
+    const u = line.match(NAT444_USERBASED_RE);
+    if (u) {
+      const protoNum = parseInt(u[1], 10);
+      const p1 = parseInt(u[4], 10);
+      const p2 = parseInt(u[5], 10);
+      const ini = Math.min(p1, p2);
+      const fim = Math.max(p1, p2);
+      return [{
+        timestamp:          ts,
+        ip_publico:         u[3],
+        ip_privado:         u[2],
+        porta_publica:      ini,
+        porta_privada:      0,
+        tamanho_bloco:      fim - ini + 1,
+        protocolo:          PROTO_MAP[protoNum] || String(protoNum),
+        tipo_nat:           'nat444',
+        equipamento_origem: config?.name || 'hillstone',
+        payload_raw:        line.slice(0, 1000),
+      }];
+    }
+
     const m = line.match(NAT444_RE);
     if (m) {
       const protoNum = parseInt(m[1], 10);
