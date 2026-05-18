@@ -31,6 +31,9 @@ clickhouse/data/
 .vscode/
 .idea/
 
+# Superpowers brainstorm scratch
+.superpowers/
+
 # Runtime data (persistent config managed via Web UI — keep .gitkeep)
 data/config.json
 data/inputs.json
