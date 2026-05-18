@@ -83,16 +83,20 @@ export default function App() {
       {/* ── Top status bar (tmux-style) ─────────────────────────── */}
       <div className="statusbar">
         <span className="pill">{platformName.toUpperCase()}</span>
-        <span><span className="k">modo</span><b>multi-tenant</b></span>
+        {user.role !== 'viewer' && <span><span className="k">modo</span><b>multi-tenant</b></span>}
         <div className="right">
           <span><span className="k">usuário</span><b>{user.username}</b></span>
-          <span><span className="k">perfil</span><b>{(user.role || 'viewer').toUpperCase()}</b></span>
-          <span>
-            <span className="k">backend</span>
-            <b style={{ color: online ? 'var(--accent-green)' : 'var(--accent-red)' }}>
-              {online ? '● ok' : '● down'}
-            </b>
-          </span>
+          {user.role !== 'viewer' && (
+            <>
+              <span><span className="k">perfil</span><b>{(user.role || 'viewer').toUpperCase()}</b></span>
+              <span>
+                <span className="k">backend</span>
+                <b style={{ color: online ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                  {online ? '● ok' : '● down'}
+                </b>
+              </span>
+            </>
+          )}
           <button
             onClick={logout}
             className="topnav-link"

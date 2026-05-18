@@ -103,6 +103,11 @@ export class LogsService {
     if (dto.protocolo) {
       conditions.push('protocolo = {protocolo:String}');
       params.protocolo = dto.protocolo;
+    } else {
+      // ICMP é ruído de CGNAT port-block (valor judicial ~nulo). Some da
+      // busca padrão, mas CONTINUA no banco — judicial vê tudo e dá pra
+      // consultar filtrando protocolo=ICMP explicitamente.
+      conditions.push("protocolo != 'ICMP'");
     }
     if (dto.tipo_nat) {
       conditions.push('tipo_nat = {tipo_nat:String}');
@@ -318,6 +323,10 @@ export class LogsService {
     const activeNames = this.resolveActiveNames(user);
     conditions.push('equipamento_origem IN {active_names:Array(String)}');
     params.active_names = activeNames;
+
+    // Dashboard esconde o ruído de ICMP (CGNAT port-block). Continua no
+    // banco; judicial e busca com filtro explícito ainda enxergam.
+    conditions.push("protocolo != 'ICMP'");
 
     // Dropdown explícito do dashboard restringe a um único equipamento;
     // só aceita se estiver na lista ativa visível.
