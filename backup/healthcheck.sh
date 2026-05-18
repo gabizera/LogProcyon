@@ -8,6 +8,8 @@
 # Roda como root, a partir de /opt/log.
 # ============================================================
 set -uo pipefail
+# cron tem PATH mínimo — garante docker/python3/etc.
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 APP_DIR="${APP_DIR:-/opt/log}"
 BACKUP_DIR="${BACKUP_DIR:-/opt/log-backups}"
 NOTIFY="${APP_DIR}/backup/notify.sh"
@@ -36,7 +38,7 @@ CUR_RX=$(ch "SELECT DISTINCT equipamento_origem FROM nat_logs ORDER BY 1" | sort
 if [ ! -f "$SEEN_IN" ]; then printf '%s\n' "$CUR_INPUTS" > "$SEEN_IN"; else
   while IFS= read -r line; do
     [ -z "$line" ] && continue
-    grep -qxF "$line" "$SEEN_IN" || tg "📥 LogProcyon: novo input criado — <b>${line%%|*}</b> (porta ${line##*|}). Aponte o equipamento do cliente pra essa porta."
+    grep -qxF "$line" "$SEEN_IN" || tg "📥 <b>Novo input criado</b>%0A%0AEquipamento: <b>${line%%|*}</b>%0APorta dedicada: <b>${line##*|}/udp</b>%0A%0AAponte o equipamento do cliente pra essa porta."
   done <<< "$CUR_INPUTS"
   printf '%s\n' "$CUR_INPUTS" > "$SEEN_IN"
 fi
@@ -44,7 +46,7 @@ fi
 if [ ! -f "$SEEN_RX" ]; then printf '%s\n' "$CUR_RX" > "$SEEN_RX"; else
   while IFS= read -r eq; do
     [ -z "$eq" ] && continue
-    grep -qxF "$eq" "$SEEN_RX" || tg "📡 LogProcyon: <b>${eq}</b> COMEÇOU A RECEBER DADOS. Coleta ativa, onboarding do cliente OK."
+    grep -qxF "$eq" "$SEEN_RX" || tg "📡 <b>Coleta ativa</b>%0A%0A<b>${eq}</b> começou a receber dados.%0AOnboarding do cliente OK ✅"
   done <<< "$CUR_RX"
   printf '%s\n' "$CUR_RX" > "$SEEN_RX"
 fi
@@ -84,11 +86,11 @@ NOW=$(date '+%F %T')
 if [ -n "$PROB" ]; then
   LAST=$(cat "$STATE" 2>/dev/null || echo "")
   if [ "$PROB" != "$LAST" ]; then       # dedupe: só alerta em mudança de estado
-    tg "🔴 LogProcyon ALERTA em ${HOST} (${NOW}): ${PROB}"
+    tg "🔴 <b>LogProcyon — ALERTA</b>%0A%0A${HOST} · ${NOW}%0A%0A${PROB//; /%0A}"
   fi
   echo "$PROB" > "$STATE"
 else
-  [ -s "$STATE" ] && tg "✅ LogProcyon recuperado em ${HOST} (${NOW}) — tudo normal."
+  [ -s "$STATE" ] && tg "✅ <b>LogProcyon — recuperado</b>%0A%0A${HOST} · ${NOW}%0ATudo normal."
   : > "$STATE"
 fi
 
@@ -100,5 +102,5 @@ if [ "$(date +%-H)" -eq "$DIGEST_HOUR" ] && [ "$(date +%-M)" -lt 15 ]; then
   FREE=$(df -Pm "$BACKUP_DIR" | awk 'NR==2{print $4}')
   BKP=$(ls -1 "$BACKUP_DIR"/nat_logs-*.native.gz 2>/dev/null | wc -l | tr -d ' ')
   ST=$([ -z "$PROB" ] && echo "✅ tudo OK" || echo "🔴 ${PROB}")
-  tg "📊 LogProcyon digest ${HOST} ${NOW}%0A${ST}%0Anat_logs: ${ROWS} linhas, ${EQ} equipamento(s)%0Aúltimo log: ${LASTLOG}%0Abackups mensais: ${BKP} | disco livre ${FREE}MB | API ${HC}"
+  tg "📊 <b>LogProcyon — digest diário</b>%0A%0A${HOST} · ${NOW}%0AStatus: ${ST}%0A%0A• nat_logs: <b>${ROWS}</b> linhas%0A• equipamentos: <b>${EQ}</b>%0A• último log: ${LASTLOG}%0A• backups mensais: ${BKP}%0A• disco livre: ${FREE}MB%0A• API: HTTP ${HC}"
 fi

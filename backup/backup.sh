@@ -14,6 +14,8 @@
 # Uso: ./backup.sh   (root, a partir de /opt/log) — via cron diário.
 # ============================================================
 set -euo pipefail
+# cron tem PATH mínimo — garante docker/python3/etc.
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 APP_DIR="${APP_DIR:-/opt/log}"
 BACKUP_DIR="${BACKUP_DIR:-/opt/log-backups}"
@@ -28,7 +30,7 @@ NOTIFY="${APP_DIR}/backup/notify.sh"
 mkdir -p "$BACKUP_DIR"
 log(){ echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
 tg(){ [ -x "$NOTIFY" ] && bash "$NOTIFY" "$@" >/dev/null 2>&1 || true; }
-fail(){ log "ERRO: $*"; tg msg "🔴 LogProcyon backup FALHOU em $(hostname): $*"; exit 1; }
+fail(){ log "ERRO: $*"; tg msg "🔴 <b>LogProcyon — BACKUP FALHOU</b>%0A%0A$(hostname)%0A%0A$*"; exit 1; }
 ch(){ docker compose exec -T clickhouse clickhouse-client --password="$CHPW" "$@"; }
 
 cd "$APP_DIR" || fail "APP_DIR $APP_DIR inexistente"
@@ -107,9 +109,9 @@ log "retenção logdata: ${DEL} removidos (>${LD_RETAIN_DAYS}d). Partições men
 NPART=$(find "$BACKUP_DIR" -name 'nat_logs-*.native.gz' | wc -l | tr -d ' ')
 if [ "$GAP" -eq 0 ]; then
   log "BACKUP CONCLUÍDO ($D)"
-  tg msg "✅ LogProcyon backup OK em $(hostname) — $D | nat_logs: $NPART partição(ões) | cobertura legal ${LEGAL_MONTHS}m OK | disco livre ${FREE_MB}MB"
+  tg msg "✅ <b>LogProcyon — backup OK</b>%0A%0A$(hostname) · $D%0A%0A• nat_logs: <b>$NPART</b> partição(ões) mensais%0A• cobertura legal: <b>${LEGAL_MONTHS} meses</b> OK%0A• disco livre: ${FREE_MB}MB"
 else
   log "BACKUP CONCLUÍDO COM GAP LEGAL ($D)"
-  tg msg "🔴 LogProcyon backup com GAP LEGAL em $(hostname) — $D. Há mês com dados SEM backup. Verifique $LOG urgente."
+  tg msg "🔴 <b>LogProcyon — GAP LEGAL no backup</b>%0A%0A$(hostname) · $D%0A%0AHá mês com dados SEM backup.%0AVerifique $LOG URGENTE."
   exit 2
 fi
