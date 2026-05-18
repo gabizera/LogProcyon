@@ -263,11 +263,11 @@ export class LogsService {
   }
 
   async getStorage(user?: JwtUser) {
+    // Dashboard só conta equipamentos ativos (não arquivados); em multi-tenant
+    // intersecta com os permitidos ao user. disk vem de system.parts (tabela
+    // inteira) — só faz sentido pra admin/single-tenant; multi-tenant zera.
     const tenantNames = this.resolveTenantNames(user);
-    const whereTenant = tenantNames
-      ? 'WHERE equipamento_origem IN {tenant_names:Array(String)}'
-      : '';
-    const paramsTenant: Record<string, unknown> = tenantNames ? { tenant_names: tenantNames } : {};
+    const activeNames = this.resolveActiveNames(user);
 
     // Logs por dia com estimativa de tamanho
     const dailySql = `
@@ -276,7 +276,7 @@ export class LogsService {
         count() AS total,
         sum(length(payload_raw)) AS payload_bytes
       FROM nat_logs
-      ${whereTenant}
+      WHERE equipamento_origem IN {active_names:Array(String)}
       GROUP BY dia
       ORDER BY dia DESC
       LIMIT 90
@@ -292,9 +292,8 @@ export class LogsService {
       WHERE table = 'nat_logs' AND active = 1
     `;
 
-    // system.parts não tem dado por equipamento; para tenants, estimamos bytes pelo payload_raw
     const [daily, disk] = await Promise.all([
-      this.clickhouse.query(dailySql, paramsTenant),
+      this.clickhouse.query(dailySql, { active_names: activeNames }),
       tenantNames
         ? Promise.resolve([{ compressed: 0, uncompressed: 0, rows: 0 }])
         : this.clickhouse.query<{ compressed: number; uncompressed: number; rows: number }>(diskSql, {}),

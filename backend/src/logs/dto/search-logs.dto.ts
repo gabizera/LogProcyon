@@ -1,7 +1,30 @@
-import { IsOptional, IsString, IsInt, Min, Max, IsDateString } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsInt,
+  Min,
+  Max,
+  IsDateString,
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
+  ValidationArguments,
+  Validate,
+} from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
 const trim = () => Transform(({ value }) => typeof value === 'string' ? value.trim() : value);
+
+@ValidatorConstraint({ name: 'isAfterStart', async: false })
+class IsAfterStart implements ValidatorConstraintInterface {
+  validate(value: string, args: ValidationArguments) {
+    const obj = args.object as { data_inicio?: string };
+    if (!obj.data_inicio || !value) return true;
+    return new Date(value).getTime() > new Date(obj.data_inicio).getTime();
+  }
+  defaultMessage() {
+    return 'data_fim deve ser posterior a data_inicio';
+  }
+}
 
 export class SearchLogsDto {
   @IsOptional()
@@ -29,14 +52,17 @@ export class SearchLogsDto {
   porta_privada?: number;
 
   @IsOptional()
+  @trim()
   @IsString()
   protocolo?: string;
 
   @IsOptional()
+  @trim()
   @IsString()
   tipo_nat?: string;
 
   @IsOptional()
+  @trim()
   @IsString()
   equipamento_origem?: string;
 
@@ -77,9 +103,11 @@ export class JudicialQueryDto {
   data_inicio: string;
 
   @IsDateString()
+  @Validate(IsAfterStart)
   data_fim: string;
 
   @IsOptional()
+  @trim()
   @IsString()
   equipamento_origem?: string;
 }
@@ -94,6 +122,7 @@ export class StatsQueryDto {
   end_date?: string;
 
   @IsOptional()
+  @trim()
   @IsString()
   equipamento_origem?: string;
 }
