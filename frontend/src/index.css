@@ -28,6 +28,11 @@
   --icmp:         #b06a1f;
   --accent-info:  #5f5f5d;   /* ícones de categoria neutros */
 
+  /* fundos/bordas tênues para caixas de status (sucesso/erro/aviso) */
+  --ok-tint:    rgba(47, 125, 58, 0.07);   --ok-line:   rgba(47, 125, 58, 0.30);
+  --down-tint:  rgba(178, 59, 59, 0.07);   --down-line: rgba(178, 59, 59, 0.30);
+  --warn-tint:  rgba(176, 106, 31, 0.07);  --warn-line: rgba(176, 106, 31, 0.30);
+
   /* ── Legacy aliases remapped → cascade does the heavy lift ── */
   --bg-0: var(--cream);  --bg-1: var(--cream);  --bg-2: var(--cream);  --bg-3: var(--cream);
   --bg-primary: var(--cream); --bg-secondary: var(--cream);
