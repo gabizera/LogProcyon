@@ -21,6 +21,34 @@ CHPW="$(grep -m1 '^CLICKHOUSE_PASSWORD=' .env | cut -d= -f2-)"
 ch(){ docker compose exec -T clickhouse clickhouse-client --password="$CHPW" --query "$1" 2>/dev/null; }
 tg(){ [ -x "$NOTIFY" ] && bash "$NOTIFY" msg "$1" >/dev/null 2>&1 || true; }
 
+# ── Eventos de input: novo input criado / começou a receber dados ──
+# State em arquivos; 1ª execução só semeia (não alerta histórico).
+SEEN_IN="${BACKUP_DIR}/.hc_inputs"
+SEEN_RX="${BACKUP_DIR}/.hc_receiving"
+
+INPUTS_JSON=$(docker run --rm -v logprocyon_logdata:/d alpine cat /d/inputs.json 2>/dev/null || echo '[]')
+CUR_INPUTS=$(printf '%s' "$INPUTS_JSON" | python3 -c 'import sys,json
+try: d=json.load(sys.stdin)
+except: d=[]
+print("\n".join(sorted("%s|%s"%(i.get("name",""),i.get("port","")) for i in d if not i.get("archived_at"))))' 2>/dev/null || echo "")
+CUR_RX=$(ch "SELECT DISTINCT equipamento_origem FROM nat_logs ORDER BY 1" | sort || echo "")
+
+if [ ! -f "$SEEN_IN" ]; then printf '%s\n' "$CUR_INPUTS" > "$SEEN_IN"; else
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    grep -qxF "$line" "$SEEN_IN" || tg "📥 LogProcyon: novo input criado — <b>${line%%|*}</b> (porta ${line##*|}). Aponte o equipamento do cliente pra essa porta."
+  done <<< "$CUR_INPUTS"
+  printf '%s\n' "$CUR_INPUTS" > "$SEEN_IN"
+fi
+
+if [ ! -f "$SEEN_RX" ]; then printf '%s\n' "$CUR_RX" > "$SEEN_RX"; else
+  while IFS= read -r eq; do
+    [ -z "$eq" ] && continue
+    grep -qxF "$eq" "$SEEN_RX" || tg "📡 LogProcyon: <b>${eq}</b> COMEÇOU A RECEBER DADOS. Coleta ativa, onboarding do cliente OK."
+  done <<< "$CUR_RX"
+  printf '%s\n' "$CUR_RX" > "$SEEN_RX"
+fi
+
 PROB=""
 
 # 1. containers
@@ -64,8 +92,8 @@ else
   : > "$STATE"
 fi
 
-# Digest diário
-if [ "$(date +%-H)" -eq "$DIGEST_HOUR" ]; then
+# Digest diário (1x: na 1ª rodada da hora do digest, minuto < 15)
+if [ "$(date +%-H)" -eq "$DIGEST_HOUR" ] && [ "$(date +%-M)" -lt 15 ]; then
   ROWS=$(ch "SELECT count() FROM nat_logs" || echo '?')
   EQ=$(ch "SELECT count(DISTINCT equipamento_origem) FROM nat_logs" || echo '?')
   LASTLOG=$(ch "SELECT ifNull(toString(max(inserted_at)),'-') FROM nat_logs")
