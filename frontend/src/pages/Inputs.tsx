@@ -20,7 +20,8 @@ const EQUIPMENT_COLORS: Record<string, string> = {
   generic:   'var(--accent-info)',
 };
 
-const emptyForm = { name: '', equipment_type: 'cisco', protocol_type: 'netflow_v9', source_ip: '', port: 514, description: '', enabled: true };
+// port = 0 → backend aloca automaticamente a porta dedicada do range.
+const emptyForm = { name: '', equipment_type: 'cisco', protocol_type: 'netflow_v9', source_ip: '', port: 0, description: '', enabled: true };
 
 type FormData = typeof emptyForm;
 
@@ -82,8 +83,10 @@ function InputForm({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Porta UDP *</label>
-          <input type="number" value={form.port} onChange={e => set('port', parseInt(e.target.value))} min={1} max={65535} required className="rounded-lg px-3 py-2" style={inputStyle} />
+          <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Porta UDP</label>
+          <div className="rounded-lg px-3 py-2" style={{ ...inputStyle, color: form.port ? 'var(--signal)' : 'var(--text-muted)' }}>
+            {form.port ? `${form.port} (fixa)` : 'atribuída automaticamente ao salvar'}
+          </div>
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -107,7 +110,7 @@ function InputForm({
             aponte o equipamento para
           </div>
           <div className="text-sm tabular-nums truncate" style={{ color: 'var(--signal)', fontFamily: 'var(--font-mono)' }}>
-            {ingestIp || <span style={{ color: 'var(--text-muted)' }}>defina em Configurações</span>}{ingestIp ? `:${form.port || '—'}` : ''} <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>UDP</span>
+            {ingestIp || <span style={{ color: 'var(--text-muted)' }}>defina em Configurações</span>}{ingestIp ? `:${form.port || 'porta atribuída ao salvar'}` : ''} <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>UDP</span>
           </div>
         </div>
       </div>
@@ -160,14 +163,18 @@ export default function Inputs() {
   useEffect(() => { load(); }, [load]);
 
   const handleCreate = async (form: FormData) => {
-    await createInput(form);
+    // port é alocado pelo backend — não enviar (0 = auto)
+    const { port: _p, ...payload } = form;
+    await createInput(payload);
     await load();
     setShowForm(false);
   };
 
   const handleUpdate = async (form: FormData) => {
     if (!editing) return;
-    await updateInput(editing.id, form);
+    // porta é gerida pelo backend, imutável pela UI
+    const { port: _p, ...payload } = form;
+    await updateInput(editing.id, payload);
     await load();
     setEditing(null);
   };

@@ -160,7 +160,7 @@ export async function fetchInputs(includeArchived = false): Promise<Input[]> {
   return data;
 }
 
-export async function createInput(dto: Omit<Input, 'id' | 'created_at'>): Promise<Input> {
+export async function createInput(dto: Omit<Input, 'id' | 'created_at' | 'port'> & { port?: number }): Promise<Input> {
   const { data } = await api.post('/inputs', dto);
   return data;
 }
