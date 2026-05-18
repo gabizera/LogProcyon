@@ -22,10 +22,11 @@ const PROTO_MAP = { 6: 'TCP', 17: 'UDP', 1: 'ICMP' };
 // sessionbased: [proto ip_priv - ip_pub priv_port pub_port - ip_dst dst_port]
 const NAT444_RE = /\[(\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+-\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+)\s+(\d+)\s+-\s+/;
 
-// userbased (alocação de bloco de portas, sem dst):
+// userbased: A=alocação de bloco, W=liberação. Captura a ação pra
+// distinguir os eventos (senão alloc/release viram linhas idênticas).
 //   NAT444:userbasedA [17 100.64.22.82 - 45.185.115.184 - 1536 2047]
-//   = [proto ip_priv - ip_pub - porta_inicio porta_fim]
-const NAT444_USERBASED_RE = /\[(\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+-\s+(\d+\.\d+\.\d+\.\d+)\s+-\s+(\d+)\s+(\d+)\s*\]/;
+//   = userbased<A|W> [proto ip_priv - ip_pub - porta_inicio porta_fim]
+const NAT444_USERBASED_RE = /NAT444:userbased([AW])\s*\[(\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+-\s+(\d+\.\d+\.\d+\.\d+)\s+-\s+(\d+)\s+(\d+)\s*\]/;
 
 module.exports = {
   protocol: 'udp',
@@ -41,20 +42,21 @@ module.exports = {
     // userbased: bloco de portas alocado (porta_inicio porta_fim, sem dst)
     const u = line.match(NAT444_USERBASED_RE);
     if (u) {
-      const protoNum = parseInt(u[1], 10);
-      const p1 = parseInt(u[4], 10);
-      const p2 = parseInt(u[5], 10);
+      const action   = u[1] === 'A' ? 'aloc' : 'libera';
+      const protoNum = parseInt(u[2], 10);
+      const p1 = parseInt(u[5], 10);
+      const p2 = parseInt(u[6], 10);
       const ini = Math.min(p1, p2);
       const fim = Math.max(p1, p2);
       return [{
         timestamp:          ts,
-        ip_publico:         u[3],
-        ip_privado:         u[2],
+        ip_publico:         u[4],
+        ip_privado:         u[3],
         porta_publica:      ini,
         porta_privada:      0,
         tamanho_bloco:      fim - ini + 1,
         protocolo:          PROTO_MAP[protoNum] || String(protoNum),
-        tipo_nat:           'nat444',
+        tipo_nat:           `nat444-${action}`,
         equipamento_origem: config?.name || 'hillstone',
         payload_raw:        line.slice(0, 1000),
       }];

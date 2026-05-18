@@ -1,294 +1,166 @@
 # Instalação em produção
 
-Deploy do LogProcyon numa VPS Linux usando Docker Swarm + Traefik. Checklist pra um servidor virgem.
+Deploy do LogProcyon numa VPS Linux com **Docker Compose** (NÃO Swarm —
+Swarm não lida bem com IPv6). TLS é terminado por um **reverse-proxy
+externo** que encaminha pra uma porta interna do compose.
 
-> Sempre faça deploy num servidor com **pelo menos 2 GB RAM** e **20 GB disco**. ClickHouse não tem vergonha de usar 600MB+ só com dados de teste.
+> Servidor com **≥4 GB RAM** e **≥20 GB disco** (ClickHouse + logs crescem).
 
 ---
 
 ## 0. Pré-requisitos
 
 ### No servidor (VPS)
-- **Debian 12** ou Ubuntu 22.04+
-- **Docker** 20.10+ e o plugin **docker compose v2**
-- **Docker Swarm** inicializado (single-node ou multi-node)
-- **Traefik** rodando como reverse-proxy em Swarm com o resolver Let's Encrypt configurado (opcional, mas recomendado — veja [seção 5](#5-traefik-opcional) se precisar criar)
-- Portas liberadas no firewall: `22/tcp`, `80/tcp`, `443/tcp`, `514/udp`
+- Debian 12+ / Ubuntu 22.04+
+- Acesso root (via `su -` ou sudo)
+- Portas: `22/tcp` (SSH), a porta do reverse-proxy → frontend, `20000-20199/udp` (1 cliente = 1 porta dedicada)
+- Um reverse-proxy externo (na frente) que termina HTTPS do domínio e encaminha pro `FRONTEND_PORT`
 
 ### No seu computador
-- Acesso SSH como `root` (ou user com `sudo`)
+- Acesso SSH ao servidor
 - O repositório clonado
 
 ---
 
 ## 1. Preparar o servidor
 
-### 1.1. Instalar Docker + Swarm + rsync
+VPS Debian minimal **não vem com `curl`** — instale antes:
 
 ```bash
-ssh root@<IP-DO-SERVIDOR>
-
 apt-get update
-apt-get install -y docker.io docker-compose-plugin rsync
-
-# Inicializa Swarm em single-node (se ainda não foi)
-docker swarm init 2>/dev/null || echo "Swarm já iniciado"
-```
-
-### 1.2. Criar a rede overlay compartilhada
-
-Se sua VPS já usa Traefik em Swarm, provavelmente já existe uma rede overlay (`procyon_net`, `traefik_public`, ou similar). Use o nome dela nos `docker-stack-*.yml`. Senão:
-
-```bash
-docker network create --driver overlay --attachable procyon_net
+apt-get install -y curl ca-certificates rsync
+# Docker (instala engine + compose plugin)
+curl -fsSL https://get.docker.com | sh
+systemctl enable --now docker
+docker --version && docker compose version
 ```
 
 ---
 
 ## 2. Subir o código
 
-Do seu computador:
+Do seu computador (ou `git clone` no servidor):
 
 ```bash
-# A partir do repo local
 rsync -az --exclude '.git' --exclude 'node_modules' --exclude 'frontend/dist' \
-          --exclude 'data' --exclude 'backup' --exclude '.env' \
+          --exclude 'data' --exclude 'backup/*.gz' --exclude '.env' \
   ./ root@<IP>:/opt/log/
 ```
 
-No servidor:
-
-```bash
-cd /opt/log
-ls        # deve mostrar docker-stack-core.yml, docker-stack-app.yml, collector/, backend/, frontend/
-```
+No servidor deve haver `/opt/log/docker-compose.yml`, `backend/`,
+`frontend/`, `collector/`, `clickhouse/init.sql`, `backup/`.
 
 ---
 
-## 3. Configurar variáveis de ambiente
+## 3. Configurar o `.env`
 
 ```bash
 cd /opt/log
-cat > .env <<EOF
-TZ_OFFSET_HOURS=-3
-JWT_SECRET=$(openssl rand -hex 32)
-CORS_ORIGINS=https://log.<seu-dominio>.com
-MULTI_TENANT_MODE=true
-EOF
-chmod 600 .env
+cp .env.example .env
 ```
 
-**Explicando:**
+Edite `/opt/log/.env` — **obrigatórias** (o compose falha de propósito se faltarem):
 
 | Variável | O que é |
 |---|---|
-| `TZ_OFFSET_HOURS` | Offset do fuso horário que o collector usa pra converter timestamps. `-3` = BRT |
-| `JWT_SECRET` | Segredo pra assinar tokens JWT. **Mínimo 32 chars, gerado uma vez e guardado com carinho** |
-| `CORS_ORIGINS` | Domínio oficial da plataforma. Bloqueia XHR de outros origins |
-| `MULTI_TENANT_MODE` | `true` ativa o isolamento por usuário via `allowed_instances`. Deixa `false` (ou omite) pra single-tenant |
+| `CLICKHOUSE_PASSWORD` | Senha do ClickHouse. `openssl rand -hex 24` |
+| `JWT_SECRET` | Segredo JWT, ≥32 chars. `openssl rand -hex 32` |
+| `CORS_ORIGINS` | Domínio https público (o que o proxy externo serve), ex: `https://log.seudominio.com.br` |
+
+Opcionais (têm default): `TZ_OFFSET_HOURS` (-3 BRT), `MULTI_TENANT_MODE`
+(`true` p/ isolar cliente por `allowed_instances` — use `true` se vende
+acesso a clientes), `FRONTEND_PORT` (porta interna p/ o proxy externo,
+default 80 — use ex. `8080` se a 80 já é do proxy), `INPUT_PORT_MIN/MAX`
+(range de portas dedicadas, default 20000-20199).
+
+```bash
+chmod 600 .env
+```
 
 ---
 
-## 4. Build das imagens Docker
-
-Na raiz do repo, no servidor:
+## 4. Subir a stack
 
 ```bash
 cd /opt/log
-docker build -t logprocyon-collector:latest ./collector
-docker build -t logprocyon-backend:latest   ./backend
-docker build -t logprocyon-frontend:latest  ./frontend
+docker compose up -d --build      # 1ª vez: build ~5-15 min
+docker compose ps                 # tudo deve ficar healthy
 ```
 
-Primeira vez leva ~5 minutos (puxa base images + npm install + nest build + vite build).
-
----
-
-## 5. Traefik (opcional)
-
-Se sua VPS já tem Traefik rodando como stack Swarm com um resolver Let's Encrypt configurado, pule esta seção.
-
-Senão, crie um `/opt/traefik/docker-stack.yml` mínimo (ajuste o email):
-
-```yaml
-version: "3.8"
-
-services:
-  traefik:
-    image: traefik:latest
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik_letsencrypt:/etc/traefik/letsencrypt
-    networks:
-      - procyon_net
-    command:
-      - "--api.dashboard=true"
-      - "--providers.docker.swarmMode=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=procyon_net"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
-      - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge=true"
-      - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.letsencryptresolver.acme.storage=/etc/traefik/letsencrypt/acme.json"
-      - "--certificatesresolvers.letsencryptresolver.acme.email=seu-email@dominio.com"
-    deploy:
-      replicas: 1
-      placement:
-        constraints: [node.role == manager]
-
-volumes:
-  traefik_letsencrypt:
-
-networks:
-  procyon_net:
-    external: true
-```
+`init.sql` cria o schema do ClickHouse **só quando o volume está vazio**
+(primeiro boot). Se você recriar com volume já existente e o schema
+mudar, aplique manualmente:
 
 ```bash
-cd /opt/traefik
-docker stack deploy -c docker-stack.yml traefik
-```
-
-O `docker-stack-app.yml` do LogProcyon já declara as labels Traefik compatíveis com o nome de resolver `letsencryptresolver`. Se seu resolver tem outro nome, ajuste a label `traefik.http.routers.logprocyon.tls.certresolver=...`.
-
----
-
-## 6. DNS
-
-Aponte `log.<seu-dominio>.com` (ou o host que você escolheu) pro IP da VPS com um `A` record. Espere propagar (~2min no Cloudflare, até 1h em outros DNS).
-
-Teste:
-```bash
-dig +short log.<seu-dominio>.com
-# deve retornar o IP da VPS
+CHPW=$(grep -m1 ^CLICKHOUSE_PASSWORD= .env | cut -d= -f2-)
+docker compose exec -T clickhouse clickhouse-client --password=$CHPW \
+  --multiquery --queries-file /docker-entrypoint-initdb.d/init.sql
+docker compose exec -T clickhouse clickhouse-client --password=$CHPW --query "SHOW TABLES"
+# esperado: nat_logs, nat_logs_hourly, nat_logs_hourly_mv
 ```
 
 ---
 
-## 7. Criar os volumes external
+## 5. Reverse-proxy externo (TLS)
 
-Este é o passo que diferencia o deploy novo do deploy legado. Os volumes vivem **fora** das stacks — assim `docker stack rm` nunca apaga dados.
-
-```bash
-docker volume create log_clickhouse_store
-docker volume create log_shared
-```
+O compose **não termina TLS**. Aponte seu proxy externo (nginx/traefik/
+caddy noutra máquina ou na borda) pro `http://<IP-VPS>:<FRONTEND_PORT>`.
+Garanta que `CORS_ORIGINS` no `.env` seja exatamente o domínio https
+que o proxy serve.
 
 ---
 
-## 8. Deploy das duas stacks
+## 6. Firewall
 
-```bash
-cd /opt/log
-set -a && . ./.env && set +a
-
-docker stack deploy -c docker-stack-core.yml --resolve-image never log-core
-docker stack deploy -c docker-stack-app.yml  --resolve-image never log-app
-```
-
-`--resolve-image never` força o Swarm a usar a imagem local (que você acabou de buildar) em vez de tentar puxar do registry.
-
-Aguarde ~30 segundos pra tudo convergir e verifique:
-
-```bash
-docker stack services log-core
-docker stack services log-app
-```
-
-Você deve ver `1/1` em todas as 4 linhas:
-
-```
-log-core_clickhouse    replicated   1/1   clickhouse/clickhouse-server:latest
-log-core_collector     replicated   1/1   logprocyon-collector:latest
-log-app_backend        replicated   1/1   logprocyon-backend:latest
-log-app_frontend       replicated   1/1   logprocyon-frontend:latest
-```
-
----
-
-## 9. Verificar
-
-### Endpoint público
-
-```bash
-curl -skI https://log.<seu-dominio>.com/
-# esperado: HTTP/2 200
-```
-
-### Config API
-
-```bash
-curl -sk https://log.<seu-dominio>.com/api/config/public
-# esperado: {"platform_name":"LogProcyon","multi_tenant_mode":true}
-```
-
-### Collector escutando
-
-```bash
-ss -ulnp | grep :514
-# esperado: UNCONN ... 0.0.0.0:514 ... users:(("docker-proxy",...))
-```
-
-### Logs dos serviços (deve estar tudo limpo)
-
-```bash
-docker service logs log-core_collector --tail 10
-docker service logs log-app_backend --tail 10
-```
-
----
-
-## 10. Primeiro login
-
-Abra `https://log.<seu-dominio>.com` no browser.
-
-**Senha inicial do admin:** gerada aleatoriamente no primeiro boot e exibida **uma única vez** nos logs do backend. Não existe senha default. Capture com:
-
-```bash
-docker service logs log-app_backend 2>&1 | grep -A4 'INITIAL ADMIN PASSWORD'
-```
-
-Usuário é `admin`. Se você perdeu a janela do log, veja [OPERATIONS.md → Perdeu a senha do admin](OPERATIONS.md#perdeu-a-senha-do-admin).
-
-**Ações imediatas:**
-
-1. Entrar no menu **USUÁRIOS** → editar admin → trocar senha
-2. Em **INPUTS**, cadastrar ao menos uma instance (nome do equipamento, IP de origem, protocolo, porta) pra o collector começar a rotear corretamente
-3. Apontar o(s) equipamento(s) NetFlow/syslog pro IP da VPS na porta cadastrada
-4. Voltar no **DASHBOARD** — em até 1 minuto você verá eventos chegando
-
----
-
-## 11. Firewall
-
-Se você usa `ufw`:
+Se usa `ufw` (cuidado: libere o SSH antes de habilitar):
 
 ```bash
 ufw allow 22/tcp
-ufw allow 80/tcp
-ufw allow 443/tcp
-ufw allow 514/udp           # legado / equipamentos que não trocam porta
-ufw allow 2055/udp          # NetFlow alternativo (alguns Cisco)
-ufw allow 9995/udp          # NetFlow alternativo (alguns Nokia)
-ufw allow 20000:20199/udp   # portas dedicadas por cliente (1 cliente = 1 porta)
+ufw allow <FRONTEND_PORT>/tcp     # do proxy externo até a VPS
+ufw allow 20000:20199/udp         # portas dedicadas por cliente
 ufw enable
 ```
 
-Se não usa `ufw` (VPS Debian minimal costuma vir sem firewall ativo), confirme com:
+---
+
+## 7. Primeiro login
+
+A senha inicial do admin é **aleatória, gerada no 1º boot e mostrada
+uma única vez** nos logs (não existe senha default):
 
 ```bash
-iptables -L INPUT -n | head
+docker compose logs backend 2>&1 | grep -A4 'INITIAL ADMIN PASSWORD'
 ```
+
+Usuário `admin`. Entre, vá em **Usuários → trocar senha** imediatamente.
+
+---
+
+## 8. Cadastrar cliente + dar acesso
+
+1. **Inputs → Novo input**: nome, equipamento (cisco/hillstone/...),
+   protocolo. **Não informe porta** — o backend aloca uma porta dedicada
+   do range automaticamente. Informe o `source_ip` (IP público de onde
+   os pacotes vêm) como 2ª camada.
+2. Anote a **porta atribuída** e configure o equipamento do cliente pra
+   enviar NetFlow/syslog pra `<IP-VPS>:<porta-atribuída>`.
+3. Para o cliente ver só os dados dele: **Usuários → novo usuário**,
+   perfil **viewer**, `allowed_instances` = o input dele (exige
+   `MULTI_TENANT_MODE=true`). O viewer vê só Dashboard + Logs do que lhe
+   foi permitido — sem Configuração, sem Judicial.
+
+---
+
+## 9. Backup e monitoramento
+
+Ver [OPERATIONS.md](OPERATIONS.md): backup diário automatizado
+(cron, retenção legal 15 meses, validado), restore testável, e
+alertas no Telegram (falha de backup, ingestão parada, novo input,
+gap legal).
 
 ---
 
 ## Próximos passos
 
-- [Operações diárias](OPERATIONS.md) — como atualizar, fazer backup, monitorar
-- [Collector bare-metal](COLLECTOR-BARE-METAL.md) — opção sem Docker se quiser máximo uptime do coletor
+- [Operações diárias](OPERATIONS.md)
+- [Collector bare-metal](COLLECTOR-BARE-METAL.md)

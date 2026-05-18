@@ -1,434 +1,180 @@
 # Operações diárias
 
-Tudo que o técnico precisa pra cuidar do LogProcyon rodando em Docker Swarm. Se é instalação do zero, veja [`INSTALL.md`](INSTALL.md).
+Tudo pra cuidar do LogProcyon rodando em **Docker Compose** (não Swarm).
+Instalação do zero: [`INSTALL.md`](INSTALL.md).
+
+Comandos rodam como root, a partir de `/opt/log`.
 
 ---
 
-## Índice
+## Arquitetura
 
-- [Visão geral da arquitetura](#visão-geral-da-arquitetura)
-- [Atualizar frontend ou backend (zero downtime)](#atualizar-frontend-ou-backend-zero-downtime)
-- [Atualizar o collector](#atualizar-o-collector-janela-curta-de-downtime)
-- [Status dos serviços](#status-dos-serviços)
-- [Ler logs](#ler-logs)
-- [Inspecionar ClickHouse](#inspecionar-clickhouse)
-- [Gerenciar usuários](#gerenciar-usuários)
-- [Cadastrar um cliente novo](#cadastrar-um-cliente-novo-instance)
-- [Backup](#backup)
-- [Restore](#restore)
-- [Troubleshooting](#troubleshooting)
+```
+reverse-proxy externo (TLS)  ──→  frontend (nginx, FRONTEND_PORT)
+                                      │  /api → backend:3000
+clientes (NetFlow/syslog)             │
+   1 cliente = 1 porta UDP   ──→  collector (network_mode: host,
+   dedicada 20000-20199)            range 20000-20199) → ClickHouse
+                                  backend ──→ ClickHouse (nat_logs)
+```
+
+Volumes: `logprocyon_clickhouse_data` (logs), `logprocyon_logdata`
+(inputs.json/users.json/config).
 
 ---
 
-## Visão geral da arquitetura
-
-```
-stack log-core          stack log-app           external volumes
-─────────────           ────────────            ────────────────
-clickhouse     ──┐                              log_clickhouse_store
-collector      ──┘                              log_shared
-                                                    │
-backend        ──┐                                  │
-frontend       ──┤ ←──── Traefik (:443) ←─── domain │
-                 │                                  │
-                 └──── lê/escreve /data ────────────┘
-```
-
-**Regra de ouro:** deploys de frontend/backend **nunca** tocam no coletor ou no ClickHouse. Deploy do collector causa ~5s de janela sem receber NetFlow (aceitável pra ISP). `log_clickhouse_store` e `log_shared` são volumes external — sobrevivem a qualquer `docker stack rm`.
-
----
-
-## Atualizar frontend ou backend (zero downtime)
-
-Isso é o que você faz **toda vez que mexe no código React ou no NestJS**. O coletor fica intacto.
-
-### Do seu computador
-
-```bash
-# 1. commit local (obrigatório pra ter histórico)
-git add -A && git commit -m "descrição da mudança"
-git push
-
-# 2. subir o código pra VPS
-rsync -az --exclude '.git' --exclude 'node_modules' --exclude 'frontend/dist' \
-          --exclude 'data' --exclude 'backup' --exclude '.env' \
-  ./ root@<IP>:/opt/log/
-```
-
-### No servidor
+## Atualizar (após mudar código)
 
 ```bash
 cd /opt/log
-
-# FRONTEND ──────────────────────────────────────
-docker build -t logprocyon-frontend:latest ./frontend
-docker service update --image logprocyon-frontend:latest --force log-app_frontend
-
-# BACKEND ───────────────────────────────────────
-docker build -t logprocyon-backend:latest ./backend
-docker service update --image logprocyon-backend:latest --force log-app_backend
+# subir o código novo (do seu PC): rsync ... root@IP:/opt/log/
+docker compose build backend   && docker compose up -d backend
+docker compose build frontend  && docker compose up -d frontend
+docker compose build collector && docker compose up -d collector   # ~5s s/ UDP
+docker compose ps              # tudo healthy
 ```
 
-Aguarde ~5s e confirme:
-
-```bash
-docker stack services log-app
-# ambos devem estar 1/1
-```
-
-> **`--force`** força re-criação mesmo se o tag `latest` não mudou. Sem isso o Swarm pensa que nada mudou e não faz nada.
-
-> **Zero logs perdidos.** O `log-core_collector` continua rodando sem piscar. Confirme:
-> ```bash
-> docker service logs log-core_collector --tail 5 --since 1m
-> # deve mostrar eventos chegando continuamente
-> ```
+Recriar um serviço NÃO apaga os volumes (dados sobrevivem).
 
 ---
 
-## Atualizar o collector (janela curta de downtime)
-
-Só precisa disso quando você mexe no `collector.js` ou nos parsers. Há uma janela de **~3-5 segundos** onde pacotes UDP chegando são descartados (inerente ao host-mode UDP: só um processo pode bindar 514/udp por vez).
+## Status e logs
 
 ```bash
-cd /opt/log
-docker build -t logprocyon-collector:latest ./collector
-docker service update --image logprocyon-collector:latest --force log-core_collector
+docker compose ps
+docker compose logs -f collector          # eventos chegando
+docker compose logs --tail=50 backend
+docker compose logs --tail=30 clickhouse
 ```
 
-Logs antes/depois:
-
-```bash
-docker service logs log-core_collector --tail 20 --since 2m
-```
+Evento normal no collector:
+`[event] CLIENTE nat444 UDP 100.64.x:0 -> 45.185.x:31744` + `[clickhouse] inserted N rows`.
 
 ---
 
-## Status dos serviços
+## ClickHouse
 
 ```bash
-# Visão de todas as stacks
-docker stack ls
-docker stack services log-core
-docker stack services log-app
+CHPW=$(grep -m1 ^CLICKHOUSE_PASSWORD= .env | cut -d= -f2-)
+docker compose exec -T clickhouse clickhouse-client --password=$CHPW --query "SELECT count() FROM nat_logs"
+docker compose exec -T clickhouse clickhouse-client --password=$CHPW --query \
+  "SELECT equipamento_origem,count(),max(inserted_at) FROM nat_logs GROUP BY equipamento_origem"
+```
 
-# Tasks em execução e histórico
-docker stack ps log-core --no-trunc
-docker stack ps log-app --no-trunc
+Schema só é criado quando o volume está vazio. Se faltar tabela
+(`UNKNOWN_TABLE` nos logs do backend, dashboard 500):
 
-# Serviço específico
-docker service ps log-app_frontend --no-trunc
+```bash
+docker compose exec -T clickhouse clickhouse-client --password=$CHPW \
+  --multiquery --queries-file /docker-entrypoint-initdb.d/init.sql
 ```
 
 ---
 
-## Ler logs
+## Cadastrar cliente novo
 
-```bash
-# Ao vivo
-docker service logs log-core_collector -f
-docker service logs log-core_clickhouse -f
-docker service logs log-app_backend -f
-docker service logs log-app_frontend -f
-
-# Últimos N minutos
-docker service logs log-app_backend --since 5m
-
-# Últimas N linhas
-docker service logs log-core_collector --tail 50
-```
-
-**Eventos de log chegando** aparecem no collector como:
-
-```
-[event] 001-ASR1002X-BDR-LIGO bpa UDP 100.67.12.38:0 -> 177.152.111.145:8192
-[clickhouse] inserted 5 rows
-```
-
-Se aparecer `[collector] unmatched source IP X.X.X.X`, significa que chegou um pacote de um IP que não bate com nenhuma instance cadastrada — é só criar uma instance com aquele `source_ip` no painel.
+1. **Inputs → Novo input**: nome, equipamento (cisco/hillstone/a10/...),
+   protocolo. **Não preencha porta** — o backend aloca uma porta dedicada
+   do range automaticamente. Informe o `source_ip` (IP público de onde
+   chegam os pacotes) — 2ª camada de segurança.
+2. Anote a **porta atribuída**; configure o equipamento do cliente pra
+   mandar pra `<IP-VPS>:<porta>/udp` (NÃO 514).
+3. Confirmar que chega:
+   ```bash
+   tcpdump -i any -nn udp port <porta> -c 5
+   docker compose logs -f collector | grep <nome-do-cliente>
+   ```
+4. Acesso do cliente: **Usuários → novo**, perfil **viewer**,
+   `allowed_instances` = o input dele. Ele vê só Dashboard + Logs do que
+   foi liberado; sem Configuração nem Judicial.
 
 ---
 
-## Inspecionar ClickHouse
+## Backup, restore e monitoramento
 
+Automatizado via cron (root):
+- `03:30` diário — `/opt/log/backup/backup.sh`
+- a cada 15 min — `/opt/log/backup/healthcheck.sh`
+
+**Backup** (`/opt/log-backups/`): nat_logs por partição mensal
+(Native gz), retenção legal **15 meses** + 1 de folga, guarda de espaço
+livre (não enche o HD), validação `gzip -t`, checagem de cobertura
+(alerta gap legal). logdata diário (30d).
+
+Manual:
 ```bash
-# Shell interativo
-docker exec -it $(docker ps --filter name=log-core_clickhouse -q) clickhouse-client
+/opt/log/backup/backup.sh
 ```
 
-Queries úteis:
-
-```sql
--- Total de logs
-SELECT count() FROM nat_logs;
-
--- Por equipamento (ideal ver quem tá mandando dado)
-SELECT equipamento_origem, count() FROM nat_logs GROUP BY equipamento_origem ORDER BY 2 DESC;
-
--- Últimos 10 eventos
-SELECT timestamp, equipamento_origem, tipo_nat, ip_privado, ip_publico, porta_publica
-FROM nat_logs ORDER BY timestamp DESC LIMIT 10;
-
--- Volume por hora nas últimas 24h
-SELECT toStartOfHour(timestamp) AS h, count() AS c
-FROM nat_logs
-WHERE timestamp >= now() - INTERVAL 24 HOUR
-GROUP BY h ORDER BY h;
-
--- Tamanho no disco
-SELECT formatReadableSize(sum(data_compressed_bytes)) AS compressed,
-       formatReadableSize(sum(data_uncompressed_bytes)) AS uncompressed,
-       sum(rows)
-FROM system.parts WHERE table = 'nat_logs' AND active = 1;
+**Restore**:
+```bash
+ls /opt/log-backups/
+/opt/log/backup/restore.sh nat /opt/log-backups/nat_logs-YYYYMM.native.gz --temp   # valida sem tocar produção
+/opt/log/backup/restore.sh nat /opt/log-backups/nat_logs-YYYYMM.native.gz           # append em produção
+/opt/log/backup/restore.sh nat <arq> --truncate                                     # restore total
+/opt/log/backup/restore.sh logdata /opt/log-backups/logdata-YYYYMMDD-HHMM.tgz
 ```
+
+**Telegram** (`.env`: `TELEGRAM_BOT_TOKEN/CHAT_ID/TOPIC_ID`): alerta de
+backup OK/falha/gap, container/API/disco, **ingestão parada** (gap
+legal), **novo input criado**, **cliente começou a receber**, digest
+diário. Sem token configurado = silencioso (não quebra nada).
+
+> Cron requer o daemon `cron` ativo (`systemctl is-active cron`). Os
+> scripts já exportam PATH (cron tem PATH mínimo, senão `docker` não resolve).
 
 ---
 
-## Gerenciar usuários
+## Backup offsite
 
-Toda gestão de usuários é via painel web (**USUÁRIOS** no menu). Mas em emergências dá pra ler/editar direto o arquivo:
-
-```bash
-docker run --rm -v log_shared:/data alpine cat /data/users.json
-```
-
-**Nunca edite o arquivo com serviços rodando** — risco de race condition. Se precisar editar à mão:
-
-```bash
-docker service scale log-app_backend=0
-docker run --rm -it -v log_shared:/data alpine vi /data/users.json
-docker service scale log-app_backend=1
-```
-
-**Perfis:**
-
-| Perfil | Pode |
-|---|---|
-| `admin` | Tudo: gerenciar usuários, configurações, deletar inputs, fazer consulta judicial |
-| `operator` | Criar/editar inputs, fazer consulta judicial, ver dashboards |
-| `viewer` | Apenas visualizar dashboards e buscar logs. Sem judicial, sem editar nada |
-
-No modo multi-tenant, cada operator/viewer tem um campo `allowed_instances` que restringe **quais clientes** ele vê. Admin sempre vê tudo.
-
----
-
-## Cadastrar um cliente novo (instance)
-
-1. Acesse **INPUTS** no menu
-2. **NOVO INPUT**
-3. Preencha:
-   - **Nome** — ex: `002-ASR1002X-BDR-CLIENTE-X` (sugestão: prefixar com o ID do equipamento pra ordenar). Nome de input ativo é único.
-   - **Equipamento** — `cisco`, `a10`, `nokia`...
-   - **Protocolo** — `netflow_v9`, `syslog_udp`, etc.
-   - **IP de origem** — IP público de onde os pacotes chegam (ex: `177.152.109.21`). Validado como IPv4. É a **2ª camada** de segurança: o collector só aceita pacotes deste IP na porta do cliente.
-   - **Porta** — deixe em branco: o backend **aloca automaticamente uma porta dedicada** do range `20000-20199` (1 cliente = 1 porta). É essa porta que isola o cliente de forma determinística.
-4. **Salvar** — anote a **porta atribuída** que aparece no input
-5. O collector recarrega em ~2s automaticamente (não precisa reiniciar)
-
-> **Mudança importante:** não se usa mais a porta 514 compartilhada por todos. Cada cliente tem sua porta exclusiva. Configure o equipamento do cliente pra enviar NetFlow/syslog pra **a porta atribuída a ele** (não 514). Isso elimina o risco de log de um cliente cair no outro.
-
-No equipamento do cliente, configure:
-
-**Cisco IOS-XE (exemplo NetFlow v9) — use a PORTA ATRIBUÍDA ao cliente, não 514:**
-```
-ip nat log translations flow-export v9 udp destination <IP-VPS> <PORTA-DO-CLIENTE>
-```
-
-Firewall: o range `20000:20199/udp` já é liberado pelo `ufw` no passo de instalação. Libere a porta do cliente também no lado do equipamento.
-
-**Conferir se está chegando:**
-
-```bash
-docker service logs log-core_collector -f | grep <nome-do-cliente>
-```
-
-Se não aparecer nada em ~30s, é sinal de:
-- Firewall bloqueando (confirmar com `tcpdump -i any udp port 514 -n` no servidor)
-- IP de origem cadastrado errado (olhar mensagem `unmatched source IP X.X.X.X`)
-- Equipamento não está mandando (verificar `show ip nat statistics` no Cisco)
-
----
-
-## Backup
-
-Dois volumes são tudo que importa:
-
-- `log_clickhouse_store` — todos os logs históricos (grande, cresce)
-- `log_shared` — `inputs.json` + `users.json` + `config.json` (pequeno)
-
-### Backup manual
-
-```bash
-BACKUP_DIR=/opt/log-backups
-mkdir -p $BACKUP_DIR
-DATE=$(date +%Y%m%d-%H%M)
-
-# ClickHouse (com serviço rodando — o export mantém consistência via snapshot COW)
-docker run --rm \
-  -v log_clickhouse_store:/from \
-  -v $BACKUP_DIR:/to \
-  alpine tar czf /to/clickhouse-$DATE.tar.gz -C /from .
-
-# Shared data
-docker run --rm \
-  -v log_shared:/from \
-  -v $BACKUP_DIR:/to \
-  alpine tar czf /to/shared-$DATE.tar.gz -C /from .
-```
-
-> **Em produção sério**, pare o ClickHouse antes do backup pra consistência total:
-> ```bash
-> docker service scale log-core_clickhouse=0
-> # backup
-> docker service scale log-core_clickhouse=1
-> ```
-> Isso causa ~30s onde o collector acumula eventos localmente (ele tem buffer) — pra maioria dos ISPs é aceitável fazer backup fora do horário de pico.
-
-### Backup automatizado (cron)
-
-`/etc/cron.daily/logprocyon-backup`:
-
-```bash
-#!/bin/bash
-set -e
-BACKUP_DIR=/opt/log-backups
-mkdir -p $BACKUP_DIR
-DATE=$(date +%Y%m%d)
-
-docker run --rm -v log_clickhouse_store:/from -v $BACKUP_DIR:/to alpine \
-  tar czf /to/clickhouse-$DATE.tar.gz -C /from .
-docker run --rm -v log_shared:/from -v $BACKUP_DIR:/to alpine \
-  tar czf /to/shared-$DATE.tar.gz -C /from .
-
-# Retenção: manter só últimos 14 dias
-find $BACKUP_DIR -name '*.tar.gz' -mtime +14 -delete
-```
-
-```bash
-chmod +x /etc/cron.daily/logprocyon-backup
-```
-
-Ainda melhor: copiar os `.tar.gz` pra um bucket S3/R2/B2 após criar.
-
----
-
-## Restore
-
-### Restaurar só os arquivos de config (users.json, inputs.json)
-
-```bash
-docker service scale log-app_backend=0
-docker run --rm \
-  -v log_shared:/to \
-  -v /opt/log-backups:/from \
-  alpine sh -c "tar xzf /from/shared-YYYYMMDD.tar.gz -C /to"
-docker service scale log-app_backend=1
-```
-
-### Restaurar ClickHouse (mais delicado)
-
-```bash
-docker service scale log-core_clickhouse=0
-docker service scale log-core_collector=0
-
-# Limpa o volume e substitui
-docker run --rm -v log_clickhouse_store:/data alpine sh -c "rm -rf /data/*"
-docker run --rm \
-  -v log_clickhouse_store:/to \
-  -v /opt/log-backups:/from \
-  alpine sh -c "tar xzf /from/clickhouse-YYYYMMDD.tar.gz -C /to"
-
-docker service scale log-core_clickhouse=1
-sleep 10   # aguarda init
-docker service scale log-core_collector=1
-```
+Hoje o nat_logs pesado fica **só local** (guarda de disco + cobertura
+15m). Pra offsite real (Backblaze B2/S3/GDrive), configure `rclone` e
+`RCLONE_REMOTE` no `.env` — o `backup.sh` já tem o gancho de upload.
+Telegram só carrega o `logdata` (pequeno); nat_logs estoura o limite de
+50 MB da Bot API.
 
 ---
 
 ## Troubleshooting
 
-### Dashboard vazio, collector rodando
+### Dashboard 500 / "Unknown table nat_logs"
+Schema não criado (volume não-vazio no 1º boot). Aplique o init.sql
+(ver seção ClickHouse).
 
-```bash
-docker service logs log-core_collector --since 2m | grep "\[event\]"
-```
+### Cliente não aparece no dashboard
+1. Chega pacote? `tcpdump -i any -nn udp port <porta>`
+   - Sem pacote → equipamento do cliente não está mandando / porta
+     errada / firewall do lado dele. (O problema é no cliente.)
+2. Chega mas não grava? `docker compose logs --tail=50 collector | grep <nome>`
+   - Sem `[event]` e sem erro → parser não casou o formato. Confira
+     `equipment_type` certo no input (ex: hillstone, não o default cisco)
+     e `source_ip` batendo. O parser do equipamento tem precedência
+     sobre o genérico.
 
-Se não tem `[event]`, o collector não está recebendo pacotes. Verifique:
-
-```bash
-# Pacotes chegando na interface?
-tcpdump -i any udp port 514 -n -c 10
-
-# Porta aberta?
-ss -ulnp | grep :514
-
-# Firewall?
-ufw status
-iptables -L INPUT -n | grep 514
-```
-
-Se tem `[event]` mas o Dashboard ainda tá vazio, problema é backend:
-
-```bash
-docker service logs log-app_backend --tail 30 | grep -i "error\|clickhouse"
-```
-
-### "Erro ao buscar logs" no Dashboard/LogSearch
-
-Backend perdeu conexão com ClickHouse. Causas comuns:
-- ClickHouse reiniciou (verificar `docker stack services log-core`)
-- DNS cross-stack quebrou (verificar se a alias `clickhouse` ainda está no `docker-stack-core.yml`)
-- Rede `procyon_net` não é `external: true` nas duas stacks
-
-Confirme DNS:
-```bash
-docker exec -it $(docker ps --filter name=log-app_backend -q) sh -c "getent hosts clickhouse"
-# deve retornar um IP
-```
-
-### Collector escutando mas não reconhece instance cadastrada
-
-```bash
-docker service logs log-core_collector --tail 30 | grep unmatched
-# mostra quais IPs estão chegando e não batem
-```
-
-Copia o IP que aparece e cadastra como nova instance no painel, **ou** atualiza o `source_ip` de uma instance existente. Hot-reload em ~2s.
-
-### "Token inválido ou expirado" logando o tempo todo
-
-JWT provavelmente expirou. Logar de novo. Se persistir, JWT_SECRET pode ter mudado entre deploys:
-
-```bash
-docker exec -it $(docker ps --filter name=log-app_backend -q) env | grep JWT_SECRET
-```
-
-Se mudou, volte pro valor original no `.env` e redeploy.
+### Ingestão parou
+Alerta automático no Telegram (sem log novo há > 30 min). Verifique
+collector (`docker compose ps`), equipamento do cliente e firewall.
 
 ### Perdeu a senha do admin
-
 ```bash
-docker service scale log-app_backend=0
-docker run --rm -v log_shared:/data alpine sh -c "rm /data/users.json"
-docker service scale log-app_backend=1
-
-# Próximo boot gera uma NOVA senha aleatória pro admin, exibida uma vez:
-docker service logs log-app_backend 2>&1 | grep -A4 'INITIAL ADMIN PASSWORD'
+docker compose stop backend
+docker run --rm -v logprocyon_logdata:/d alpine sh -c "rm /d/users.json"
+docker compose start backend
+docker compose logs backend 2>&1 | grep -A4 'INITIAL ADMIN PASSWORD'
 ```
+Recria admin com senha aleatória nova (perde os outros usuários).
 
-Não existe senha default conhecida — a senha é sempre aleatória por boot. Todos os outros usuários serão perdidos — só use isso em emergência.
-
-### Disco cheio
-
-ClickHouse tem TTL de 15 meses configurado no schema. Verifique uso:
-
+### Disco
+ClickHouse tem TTL de 15 meses (não cresce infinito). O `backup.sh`
+aborta se o disco estiver abaixo do mínimo (não derruba o sistema).
 ```bash
-docker run --rm -v log_clickhouse_store:/data alpine du -sh /data
-df -h /var/lib/docker
+df -h /
+docker system df
 ```
 
-Pra reduzir retenção sem esperar TTL rodar, ajuste em **CONFIGURAÇÕES** no painel. Depois forçar merge no ClickHouse:
+---
 
-```sql
-OPTIMIZE TABLE nat_logs FINAL;
-```
+## Próximos passos
+
+- [Instalação](INSTALL.md)
+- [Collector bare-metal](COLLECTOR-BARE-METAL.md)
