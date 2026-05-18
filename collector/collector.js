@@ -45,47 +45,82 @@ let flushTimer = null;
 
 // ── ClickHouse insertion ──────────────────────────────────────────────────────
 
-function insertBatch(rows) {
+const CH_TIMEOUT_MS  = parseInt(process.env.CH_TIMEOUT_MS  || '10000', 10);
+const CH_MAX_RETRIES = parseInt(process.env.CH_MAX_RETRIES || '3', 10);
+
+// Quantos inserts estão em vôo — usado pelo shutdown pra esperar o flush.
+let pendingInserts = 0;
+
+function postBatch(body, query) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(CLICKHOUSE_URL);
+    const headers = {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body),
+      'X-ClickHouse-User': CLICKHOUSE_USER,
+    };
+    if (CLICKHOUSE_PASSWORD) headers['X-ClickHouse-Key'] = CLICKHOUSE_PASSWORD;
+
+    const options = {
+      hostname: url.hostname,
+      port:     url.port || 8123,
+      path:     `/?query=${encodeURIComponent(query)}`,
+      method:   'POST',
+      headers,
+      timeout:  CH_TIMEOUT_MS,
+    };
+
+    const req = http.request(options, res => {
+      let resp = '';
+      res.on('data', d => resp += d);
+      res.on('end', () => {
+        if (res.statusCode === 200) resolve();
+        else reject(new Error(`HTTP ${res.statusCode}: ${resp.slice(0, 200)}`));
+      });
+    });
+
+    req.on('timeout', () => req.destroy(new Error(`timeout after ${CH_TIMEOUT_MS}ms`)));
+    req.on('error', err => reject(err));
+    req.write(body);
+    req.end();
+  });
+}
+
+// Resolve sempre (mesmo após esgotar retries) pra não derrubar o processo;
+// loga FATAL quando desiste — dado perdido precisa ser visível no log.
+async function insertBatch(rows) {
   if (rows.length === 0) return;
 
   const body  = rows.map(r => JSON.stringify(r)).join('\n');
   const query = 'INSERT INTO nat_logs (timestamp,ip_publico,ip_privado,porta_publica,porta_privada,protocolo,tipo_nat,equipamento_origem,payload_raw,tamanho_bloco) FORMAT JSONEachRow';
-  const url   = new URL(CLICKHOUSE_URL);
 
-  const headers = {
-    'Content-Type': 'application/json',
-    'Content-Length': Buffer.byteLength(body),
-    'X-ClickHouse-User': CLICKHOUSE_USER,
-  };
-  if (CLICKHOUSE_PASSWORD) headers['X-ClickHouse-Key'] = CLICKHOUSE_PASSWORD;
-
-  const options = {
-    hostname: url.hostname,
-    port:     url.port || 8123,
-    path:     `/?query=${encodeURIComponent(query)}`,
-    method:   'POST',
-    headers,
-  };
-
-  const req = http.request(options, res => {
-    if (res.statusCode !== 200) {
-      let err = '';
-      res.on('data', d => err += d);
-      res.on('end', () => console.error(`[clickhouse] error ${res.statusCode}: ${err}`));
-    } else {
-      console.log(`[clickhouse] inserted ${rows.length} rows`);
+  pendingInserts++;
+  try {
+    for (let attempt = 1; attempt <= CH_MAX_RETRIES; attempt++) {
+      try {
+        await postBatch(body, query);
+        console.log(`[clickhouse] inserted ${rows.length} rows`);
+        return;
+      } catch (e) {
+        const last = attempt === CH_MAX_RETRIES;
+        console.error(`[clickhouse] insert attempt ${attempt}/${CH_MAX_RETRIES} failed: ${e.message}`);
+        if (last) {
+          console.error(`[clickhouse] FATAL: descartando ${rows.length} rows após ${CH_MAX_RETRIES} tentativas`);
+          return;
+        }
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      }
     }
-  });
-
-  req.on('error', e => console.error('[clickhouse] request error:', e.message));
-  req.write(body);
-  req.end();
+  } finally {
+    pendingInserts--;
+  }
 }
 
 function scheduledFlush() {
   if (batch.length > 0) {
-    insertBatch(batch.splice(0, batch.length));
+    return insertBatch(batch.splice(0, batch.length));
   }
+  return Promise.resolve();
 }
 
 function maybeBatchFlush() {
@@ -251,11 +286,31 @@ startPolling();
 
 flushTimer = setInterval(scheduledFlush, FLUSH_INTERVAL);
 
-process.on('SIGTERM', () => {
-  console.log('[collector] Shutting down...');
+let shuttingDown = false;
+async function gracefulShutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[collector] ${signal}: shutting down...`);
   clearInterval(flushTimer);
   clearInterval(pollTimer);
-  scheduledFlush();
   for (const { server } of sockets.values()) server.close();
+
+  // Flush final + espera inserts em vôo (com teto pra não travar o orquestrador).
+  const SHUTDOWN_MAX_MS = parseInt(process.env.SHUTDOWN_MAX_MS || '15000', 10);
+  const deadline = Date.now() + SHUTDOWN_MAX_MS;
+  try {
+    await scheduledFlush();
+    while (pendingInserts > 0 && Date.now() < deadline) {
+      await new Promise(r => setTimeout(r, 100));
+    }
+    if (pendingInserts > 0) {
+      console.error(`[collector] shutdown timeout: ${pendingInserts} insert(s) ainda em vôo`);
+    }
+  } catch (e) {
+    console.error('[collector] shutdown flush error:', e.message);
+  }
   process.exit(0);
-});
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT',  () => gracefulShutdown('SIGINT'));
