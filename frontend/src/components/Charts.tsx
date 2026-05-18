@@ -8,20 +8,19 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-const PRIMARY      = '#3b82f6';
-const MONO         = "'JetBrains Mono', monospace";
-const GRID_COLOR   = 'rgba(148,163,184,0.06)';
-const AXIS_COLOR   = 'rgba(148,163,184,0.12)';
-const LABEL_COLOR  = '#64748b';
+const PRIMARY      = 'var(--ink)';
+const GRID_COLOR   = 'var(--line)';
+const AXIS_COLOR   = 'var(--line)';
+const LABEL_COLOR  = 'var(--ink-muted)';
 
 const tooltipStyle: React.CSSProperties = {
-  background: '#0f172a',
-  border: '1px solid rgba(148,163,184,0.12)',
+  background: 'var(--cream)',
+  border: '1px solid var(--line)',
   borderRadius: 8,
-  fontFamily: MONO,
-  fontSize: 11,
-  color: '#e2e8f0',
-  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+  fontFamily: 'var(--font-text)',
+  fontSize: 12,
+  color: 'var(--ink)',
+  boxShadow: 'var(--shadow-soft)',
   padding: '8px 12px',
 };
 
@@ -47,18 +46,18 @@ export function VolumeLineChart({ data, xKey, yKey, height = 260, color = PRIMAR
         <XAxis
           dataKey={xKey}
           stroke={AXIS_COLOR}
-          tick={{ fill: LABEL_COLOR, fontSize: 10, fontFamily: MONO }}
+          tick={{ fill: LABEL_COLOR, fontSize: 11 }}
           axisLine={false}
           tickLine={false}
         />
         <YAxis
           stroke={AXIS_COLOR}
-          tick={{ fill: LABEL_COLOR, fontSize: 10, fontFamily: MONO }}
+          tick={{ fill: LABEL_COLOR, fontSize: 11 }}
           axisLine={false}
           tickLine={false}
           width={36}
         />
-        <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: 'rgba(59,130,246,0.15)', strokeWidth: 1 }} />
+        <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: 'var(--line-strong)', strokeWidth: 1 }} />
         <Area
           type="monotone"
           dataKey={yKey}
@@ -66,7 +65,7 @@ export function VolumeLineChart({ data, xKey, yKey, height = 260, color = PRIMAR
           strokeWidth={2}
           fill="url(#areaGrad)"
           dot={false}
-          activeDot={{ r: 4, fill: color, stroke: '#0f172a', strokeWidth: 2 }}
+          activeDot={{ r: 4, fill: color, stroke: 'var(--cream)', strokeWidth: 2 }}
         />
       </AreaChart>
     </ResponsiveContainer>
