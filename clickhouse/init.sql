@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS nat_logs (
 ) ENGINE = MergeTree()
 PARTITION BY toYYYYMM(timestamp)
 ORDER BY (timestamp, ip_publico, ip_privado)
-TTL timestamp + INTERVAL 15 MONTH
+TTL toDateTime(timestamp) + INTERVAL 15 MONTH
 SETTINGS index_granularity = 8192;
 
 -- Secondary indices for fast IP lookups
