@@ -124,8 +124,8 @@ export default function FilterBar({ onApply, onClear, initial }: FilterBarProps)
           type="submit"
           className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all hover:brightness-110 cursor-pointer"
           style={{
-            background: 'linear-gradient(135deg, var(--accent-cyan), #3b82f6)',
-            color: '#020617',
+            background: 'var(--ink)',
+            color: 'var(--off-white)',
             fontFamily: 'var(--font-display)',
           }}
         >

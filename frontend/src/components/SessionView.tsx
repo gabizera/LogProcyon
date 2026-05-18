@@ -39,7 +39,7 @@ export default function SessionView({ log, onClose }: SessionViewProps) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+      style={{ background: 'var(--overlay)', backdropFilter: 'blur(4px)' }}
       onClick={onClose}
     >
       <div
