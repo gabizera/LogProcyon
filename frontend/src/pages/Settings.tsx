@@ -162,7 +162,7 @@ export default function SettingsPage() {
               type="submit"
               disabled={saving}
               className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold cursor-pointer hover:brightness-110 disabled:opacity-50 transition-all"
-              style={{ background: 'var(--accent-amber)', color: 'var(--off-white)', fontFamily: 'var(--font-display)' }}
+              style={{ background: 'var(--ink)', color: 'var(--off-white)', fontFamily: 'var(--font-display)', boxShadow: 'var(--inset)' }}
             >
               <Save size={14} />
               {saving ? 'Salvando...' : 'Salvar Configurações'}
