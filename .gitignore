@@ -38,3 +38,4 @@ clickhouse/data/
 data/config.json
 data/inputs.json
 data/users.json
+.gstack/

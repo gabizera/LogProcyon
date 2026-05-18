@@ -1,4 +1,5 @@
 import { Controller, Post, Get, Body, Request } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
 import { LoginDto } from './dto/login.dto';
@@ -7,6 +8,9 @@ import { LoginDto } from './dto/login.dto';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  // Anti brute-force: 5 tentativas / minuto / IP no login, bem mais
+  // estrito que o limite global da API (username admin é conhecido).
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Public()
   @Post('login')
   login(@Body() dto: LoginDto) {
