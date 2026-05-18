@@ -23,7 +23,7 @@ export class LogsController {
   }
 
   @Get('judicial')
-  @Roles('admin', 'operator')
+  @Roles('admin', 'operator', 'viewer')
   judicial(@Query() dto: JudicialQueryDto, @Request() req: any) {
     return this.logsService.judicialSearch(dto, req.user);
   }

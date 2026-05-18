@@ -29,7 +29,7 @@ const nav: NavItem[] = [
     roles: ['admin', 'operator', 'viewer'],
     children: [
       { to: '/logs',     label: 'LOGS',     roles: ['admin', 'operator', 'viewer'] },
-      { to: '/judicial', label: 'JUDICIAL', roles: ['admin', 'operator']           },
+      { to: '/judicial', label: 'JUDICIAL', roles: ['admin', 'operator', 'viewer'] },
     ],
   },
   {
@@ -143,7 +143,7 @@ export default function App() {
         <Routes>
           <Route path="/"          element={<Dashboard />} />
           <Route path="/logs"      element={<LogSearch />} />
-          <Route path="/judicial"  element={<RoleGate role={user.role} allow={['admin', 'operator']}><JudicialSearch /></RoleGate>} />
+          <Route path="/judicial"  element={<RoleGate role={user.role} allow={['admin', 'operator', 'viewer']}><JudicialSearch /></RoleGate>} />
           <Route path="/storage"   element={<RoleGate role={user.role} allow={['admin', 'operator']}><StoragePage /></RoleGate>} />
           <Route path="/inputs"    element={<RoleGate role={user.role} allow={['admin', 'operator']}><Inputs /></RoleGate>} />
           <Route path="/cgnat-pools" element={<RoleGate role={user.role} allow={['admin', 'operator']}><CgnatPools /></RoleGate>} />
