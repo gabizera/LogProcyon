@@ -60,7 +60,7 @@ export default function LogSearch() {
       {error && (
         <div
           className="mb-4 px-4 py-2.5 rounded-lg text-xs"
-          style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}
+          style={{ background: 'color-mix(in srgb, var(--down) 7%, transparent)', border: '1px solid color-mix(in srgb, var(--down) 20%, transparent)', color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}
         >
           {error}
         </div>
@@ -77,7 +77,9 @@ export default function LogSearch() {
       )}
 
       {(result || loading) && (
-        <LogTable logs={result?.data ?? []} loading={loading} onRowClick={setSelectedLog} />
+        <div className="dense">
+          <LogTable logs={result?.data ?? []} loading={loading} onRowClick={setSelectedLog} />
+        </div>
       )}
 
       {!result && !loading && (
@@ -87,7 +89,7 @@ export default function LogSearch() {
         >
           <div
             className="w-12 h-12 rounded-xl flex items-center justify-center"
-            style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)' }}
+            style={{ background: 'var(--tint)', border: '1px solid var(--line)' }}
           >
             <SearchIcon size={20} style={{ color: 'var(--accent-cyan)' }} />
           </div>
@@ -114,7 +116,7 @@ export default function LogSearch() {
                   className="w-8 h-8 rounded-lg text-xs font-medium cursor-pointer transition-all"
                   style={{
                     background: p === result.page ? 'var(--accent-cyan)' : 'var(--bg-tertiary)',
-                    color:      p === result.page ? '#020617'            : 'var(--text-secondary)',
+                    color:      p === result.page ? 'var(--off-white)'   : 'var(--text-secondary)',
                     border:     p === result.page ? 'none'               : '1px solid var(--border-subtle)',
                     fontFamily: 'var(--font-mono)',
                   }}
