@@ -28,35 +28,15 @@ function formatTimestamp(ts: string): string {
 }
 
 function ProtocolBadge({ proto }: { proto: string }) {
-  const colors: Record<string, string> = {
-    TCP: 'var(--accent-cyan)', UDP: 'var(--accent-purple)', ICMP: '#f97316',
+  const cls: Record<string, string> = {
+    TCP: 'badge-tcp', UDP: 'badge-udp', ICMP: 'badge-icmp',
   };
-  const c = colors[proto?.toUpperCase()] ?? 'var(--text-muted)';
-  return (
-    <span
-      className="badge"
-      style={{ color: c, background: c + '14', border: `1px solid ${c}22` }}
-    >
-      {proto}
-    </span>
-  );
+  const c = cls[proto?.toUpperCase()] ?? '';
+  return <span className={`badge ${c}`}>{proto}</span>;
 }
 
 function NatBadge({ tipo }: { tipo: string }) {
-  const colors: Record<string, string> = {
-    CGNAT: 'var(--accent-blue)', BPA: 'var(--accent-amber)',
-    ESTATICO: 'var(--accent-green)', cgnat: 'var(--accent-blue)',
-    bpa: 'var(--accent-amber)', estatico: 'var(--accent-green)',
-  };
-  const c = colors[tipo] ?? 'var(--text-muted)';
-  return (
-    <span
-      className="badge"
-      style={{ color: c, background: c + '14', border: `1px solid ${c}22` }}
-    >
-      {tipo?.toUpperCase()}
-    </span>
-  );
+  return <span className="badge">{tipo?.toUpperCase()}</span>;
 }
 
 function Placeholder({ text }: { text: string }) {
@@ -107,10 +87,10 @@ export default function LogTable({ logs, loading, onRowClick }: LogTableProps) {
                 <td className="px-4 py-2.5 whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
                   {formatTimestamp(log.timestamp)}
                 </td>
-                <td className="px-4 py-2.5 whitespace-nowrap font-medium" style={{ color: 'var(--accent-cyan)' }}>
+                <td className="px-4 py-2.5 whitespace-nowrap font-medium tabular-nums" style={{ color: 'var(--ink)' }}>
                   {log.ip_publico}
                 </td>
-                <td className="px-4 py-2.5 whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>
+                <td className="px-4 py-2.5 whitespace-nowrap tabular-nums" style={{ color: 'var(--text-primary)' }}>
                   {log.ip_privado}
                 </td>
                 <td className="px-4 py-2.5 whitespace-nowrap tabular-nums" style={{ color: 'var(--text-secondary)' }}>
