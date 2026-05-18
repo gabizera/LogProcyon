@@ -200,7 +200,7 @@ function NavDropdown({
           style={{
             background: 'var(--bg-1)',
             border: '1px solid var(--rule-1)',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+            boxShadow: 'var(--shadow-soft)',
           }}
         >
           {children.map(c => {
