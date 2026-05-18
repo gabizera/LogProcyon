@@ -12,12 +12,12 @@ const PROTOCOL_TYPES  = [
 ];
 
 const EQUIPMENT_COLORS: Record<string, string> = {
-  cisco:     'var(--accent-cyan)',
-  a10:       'var(--accent-green)',
-  nokia:     '#3b82f6',
-  hillstone: 'var(--accent-amber)',
-  juniper:   'var(--accent-purple)',
-  generic:   'var(--text-muted)',
+  cisco:     'var(--accent-info)',
+  a10:       'var(--accent-info)',
+  nokia:     'var(--accent-info)',
+  hillstone: 'var(--accent-info)',
+  juniper:   'var(--accent-info)',
+  generic:   'var(--accent-info)',
 };
 
 const emptyForm = { name: '', equipment_type: 'cisco', protocol_type: 'netflow_v9', source_ip: '', port: 514, description: '', enabled: true };
@@ -120,7 +120,7 @@ function InputForm({
 
       <div className="flex gap-2">
         <button type="submit" disabled={saving} className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold cursor-pointer hover:brightness-110 disabled:opacity-50"
-          style={{ background: 'linear-gradient(135deg, var(--accent-cyan), #3b82f6)', color: '#020617', fontFamily: 'var(--font-display)' }}>
+          style={{ background: 'var(--signal)', color: 'var(--off-white)', fontFamily: 'var(--font-display)' }}>
           <Check size={14} />{saving ? 'Salvando...' : 'Salvar'}
         </button>
         <button type="button" onClick={onCancel} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer hover:brightness-110"
@@ -199,7 +199,7 @@ export default function Inputs() {
       <div className="px-6 pt-4 pb-8">
 
       {error && (
-        <div className="mb-4 px-4 py-2.5 rounded-lg text-xs" style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>
+        <div className="mb-4 px-4 py-2.5 rounded-lg text-xs" style={{ background: 'var(--down-tint)', border: '1px solid var(--down-line)', color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>
           {error}
         </div>
       )}
@@ -218,7 +218,7 @@ export default function Inputs() {
         <div className="flex flex-col gap-3">
           {inputs.length === 0 && !showForm && (
             <div className="rounded-xl p-14 flex flex-col items-center justify-center gap-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)' }}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'var(--tint)', border: '1px solid var(--line)' }}>
                 <Radio size={20} style={{ color: 'var(--accent-cyan)' }} />
               </div>
               <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
@@ -228,7 +228,7 @@ export default function Inputs() {
                 Cada input define uma fonte de log — equipamento, protocolo, porta e (opcionalmente) IP de origem. Cadastre um pra começar a receber NetFlow ou syslog no collector.
               </p>
               <button onClick={() => setShowForm(true)} className="mt-2 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer hover:brightness-110"
-                style={{ background: 'linear-gradient(135deg, var(--accent-cyan), #3b82f6)', color: '#020617', fontFamily: 'var(--font-display)' }}>
+                style={{ background: 'var(--signal)', color: 'var(--off-white)', fontFamily: 'var(--font-display)' }}>
                 <Plus size={14} /> Criar primeiro input
               </button>
             </div>
@@ -250,7 +250,7 @@ export default function Inputs() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>{inp.name}</span>
-                      <span className="badge" style={{ color: EQUIPMENT_COLORS[inp.equipment_type] ?? 'var(--text-muted)', background: (EQUIPMENT_COLORS[inp.equipment_type] ?? '#888') + '14', border: `1px solid ${(EQUIPMENT_COLORS[inp.equipment_type] ?? '#888')}22` }}>
+                      <span className="badge" style={{ color: EQUIPMENT_COLORS[inp.equipment_type] ?? 'var(--text-muted)', background: 'var(--tint)', border: '1px solid var(--line)' }}>
                         {inp.equipment_type}
                       </span>
                     </div>
@@ -271,7 +271,7 @@ export default function Inputs() {
                     )}
                     {canWrite && (
                       <button onClick={() => handleArchive(inp.id)} title="Arquivar" className="p-1.5 rounded-lg cursor-pointer hover:brightness-125 transition-all"
-                        style={{ background: 'rgba(239,68,68,0.08)', color: 'var(--accent-red)', border: '1px solid rgba(239,68,68,0.15)' }}>
+                        style={{ background: 'var(--down-tint)', color: 'var(--accent-red)', border: '1px solid var(--down-line)' }}>
                         <Trash2 size={13} />
                       </button>
                     )}

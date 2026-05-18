@@ -196,7 +196,7 @@ export default function JudicialSearch() {
             className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all hover:brightness-110 cursor-pointer disabled:opacity-50"
             style={{
               background: 'var(--signal)',
-              color: '#050505',
+              color: 'var(--off-white)',
               fontFamily: 'var(--font-mono)',
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
@@ -215,7 +215,7 @@ export default function JudicialSearch() {
       {error && (
         <div
           className="flex items-center gap-3 rounded-xl px-4 py-3 mb-4"
-          style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)' }}
+          style={{ background: 'var(--down-tint)', border: '1px solid var(--down-line)' }}
         >
           <AlertCircle size={15} style={{ color: 'var(--accent-red)', flexShrink: 0 }} />
           <span className="text-sm" style={{ color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>{error}</span>
@@ -224,12 +224,12 @@ export default function JudicialSearch() {
 
       {/* Results */}
       {result && (
-        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+        <div className="dense rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
           {/* Result status bar */}
           <div
             className="px-5 py-3 flex items-center justify-between"
             style={{
-              background: result.total > 0 ? 'rgba(16,185,129,0.07)' : 'rgba(239,68,68,0.07)',
+              background: result.total > 0 ? 'var(--ok-tint)' : 'var(--down-tint)',
               borderBottom: '1px solid var(--border-subtle)',
             }}
           >
@@ -253,8 +253,8 @@ export default function JudicialSearch() {
                   className="badge ml-2"
                   style={{
                     color: result.source === 'static_pool' ? 'var(--signal)' : 'var(--accent-cyan)',
-                    background: result.source === 'static_pool' ? 'rgba(255,176,0,0.08)' : 'rgba(59,130,246,0.08)',
-                    border: `1px solid ${result.source === 'static_pool' ? 'rgba(255,176,0,0.25)' : 'rgba(59,130,246,0.25)'}`,
+                    background: result.source === 'static_pool' ? 'var(--warn-tint)' : 'var(--tint)',
+                    border: `1px solid ${result.source === 'static_pool' ? 'var(--warn-line)' : 'var(--line)'}`,
                   }}
                 >
                   {result.source === 'static_pool' ? 'pool estático' : 'log real'}
@@ -317,7 +317,7 @@ export default function JudicialSearch() {
               <div className="flex items-center gap-3 mb-4">
                 <div
                   className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)' }}
+                  style={{ background: 'var(--tint)', border: '1px solid var(--line)' }}
                 >
                   <User size={14} style={{ color: 'var(--accent-cyan)' }} />
                 </div>
@@ -354,13 +354,13 @@ export default function JudicialSearch() {
                   <div className="flex items-center gap-2 mt-1">
                     <span
                       className="badge"
-                      style={{ color: 'var(--accent-cyan)', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}
+                      style={{ color: 'var(--accent-cyan)', background: 'var(--tint)', border: '1px solid var(--line)' }}
                     >
                       {r.protocolo}
                     </span>
                     <span
                       className="badge"
-                      style={{ color: 'var(--accent-amber)', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}
+                      style={{ color: 'var(--accent-amber)', background: 'var(--warn-tint)', border: '1px solid var(--warn-line)' }}
                     >
                       {r.tipo_nat?.toUpperCase()}
                     </span>

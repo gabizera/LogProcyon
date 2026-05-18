@@ -57,7 +57,7 @@ export default function LoginPage({ platformName = 'LogProcyon' }: { platformNam
             className="flex items-center justify-center w-[36px] h-[36px] shrink-0"
             style={{
               background: 'var(--signal)',
-              color: '#050505',
+              color: 'var(--off-white)',
               fontWeight: 700,
               fontSize: 12,
               letterSpacing: '0.04em',
@@ -93,8 +93,8 @@ export default function LoginPage({ platformName = 'LogProcyon' }: { platformNam
           <div
             className="mb-3 flex items-center gap-2 px-3 py-2"
             style={{
-              background: 'rgba(217, 59, 59, 0.07)',
-              border: '1px solid rgba(217, 59, 59, 0.3)',
+              background: 'var(--down-tint)',
+              border: '1px solid var(--down-line)',
               color: 'var(--accent-red)',
               fontFamily: 'var(--font-mono)',
               fontSize: 11,
@@ -134,7 +134,7 @@ export default function LoginPage({ platformName = 'LogProcyon' }: { platformNam
             className="w-full mt-4 py-2.5 font-bold cursor-pointer disabled:opacity-50 transition-all"
             style={{
               background: 'var(--signal)',
-              color: '#050505',
+              color: 'var(--off-white)',
               border: 'none',
               borderRadius: 0,
               fontFamily: 'var(--font-mono)',
