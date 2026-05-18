@@ -69,7 +69,7 @@ export default function SettingsPage() {
       <div className="px-6 pt-4 pb-8">
 
       {errMsg && status === 'error' && (
-        <div className="mb-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs" style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>
+        <div className="mb-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs" style={{ background: 'var(--down-tint)', border: '1px solid var(--down-line)', color: 'var(--down)', fontFamily: 'var(--font-mono)' }}>
           <AlertCircle size={13} /> {errMsg}
         </div>
       )}
@@ -162,7 +162,7 @@ export default function SettingsPage() {
               type="submit"
               disabled={saving}
               className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold cursor-pointer hover:brightness-110 disabled:opacity-50 transition-all"
-              style={{ background: 'linear-gradient(135deg, var(--accent-amber), #d97706)', color: '#020617', fontFamily: 'var(--font-display)' }}
+              style={{ background: 'var(--accent-amber)', color: 'var(--off-white)', fontFamily: 'var(--font-display)' }}
             >
               <Save size={14} />
               {saving ? 'Salvando...' : 'Salvar Configurações'}
@@ -178,7 +178,7 @@ export default function SettingsPage() {
       </form>
 
       {/* System info */}
-      <div className="mt-5 rounded-xl p-4" style={{ background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.12)' }}>
+      <div className="mt-5 rounded-xl p-4" style={{ background: 'var(--warn-tint)', border: '1px solid var(--warn-line)' }}>
         <h4 className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)' }}>
           Configuração atual do sistema
         </h4>

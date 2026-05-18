@@ -134,7 +134,7 @@ function PoolForm({ initial, onSave, onCancel }: {
 
       <div className="flex gap-2">
         <button type="submit" disabled={saving} className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold cursor-pointer hover:brightness-110 disabled:opacity-50"
-          style={{ background: 'var(--signal)', color: '#050505', fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          style={{ background: 'var(--signal)', color: 'var(--off-white)', fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           <Check size={14} />{saving ? 'Salvando...' : 'Salvar'}
         </button>
         <button type="button" onClick={onCancel} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer hover:brightness-110"
@@ -193,7 +193,7 @@ export default function CgnatPools() {
           <div className="mb-4">
             <button onClick={() => setCreating(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer hover:brightness-110"
-              style={{ background: 'var(--signal)', color: '#050505', fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              style={{ background: 'var(--signal)', color: 'var(--off-white)', fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               <Plus size={14} /> Novo Pool
             </button>
           </div>
@@ -256,7 +256,7 @@ export default function CgnatPools() {
                     <Pencil size={13} />
                   </button>
                   <button onClick={() => handleDelete(p.id)} className="p-2 rounded-lg cursor-pointer hover:brightness-125"
-                    style={{ background: 'rgba(239,68,68,0.08)', color: 'var(--accent-red)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                    style={{ background: 'var(--down-tint)', color: 'var(--down)', border: '1px solid var(--down-line)' }}>
                     <Trash2 size={13} />
                   </button>
                 </div>

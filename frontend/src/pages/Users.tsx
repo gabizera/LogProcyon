@@ -91,9 +91,9 @@ function CreateForm({ onSave, onCancel, multiTenant, inputs }: {
                     onClick={() => toggleInstance(i.id)}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all"
                     style={{
-                      background: selected ? 'rgba(6,182,212,0.15)' : 'var(--bg-tertiary)',
+                      background: selected ? 'var(--tint)' : 'var(--bg-tertiary)',
                       color: selected ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                      border: `1px solid ${selected ? 'rgba(6,182,212,0.4)' : 'var(--border-subtle)'}`,
+                      border: `1px solid ${selected ? 'var(--line-strong)' : 'var(--border-subtle)'}`,
                       fontFamily: 'var(--font-mono)',
                     }}
                   >
@@ -113,7 +113,7 @@ function CreateForm({ onSave, onCancel, multiTenant, inputs }: {
 
       <div className="flex gap-2">
         <button type="submit" disabled={saving} className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold cursor-pointer hover:brightness-110 disabled:opacity-50"
-          style={{ background: 'linear-gradient(135deg, var(--accent-cyan), #3b82f6)', color: '#020617', fontFamily: 'var(--font-display)' }}>
+          style={{ background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-info))', color: 'var(--off-white)', fontFamily: 'var(--font-display)' }}>
           <Check size={14} />{saving ? 'Criando...' : 'Criar Usuário'}
         </button>
         <button type="button" onClick={onCancel} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer hover:brightness-110"
@@ -140,7 +140,7 @@ function ChangePasswordModal({ user, onSave, onClose }: { user: User; onSave: (i
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'var(--overlay)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
       <div className="w-full max-w-sm rounded-xl overflow-hidden" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-medium)', boxShadow: 'var(--shadow-card)' }} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
           <span className="text-sm font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>Trocar senha — {user.username}</span>
@@ -153,7 +153,7 @@ function ChangePasswordModal({ user, onSave, onClose }: { user: User; onSave: (i
             style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: 13 }} />
           {err && <div className="mb-3 text-xs" style={{ color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>{err}</div>}
           <button type="submit" disabled={saving} className="w-full py-2 rounded-lg text-sm font-semibold cursor-pointer hover:brightness-110 disabled:opacity-50"
-            style={{ background: 'linear-gradient(135deg, var(--accent-cyan), #3b82f6)', color: '#020617', fontFamily: 'var(--font-display)' }}>
+            style={{ background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-info))', color: 'var(--off-white)', fontFamily: 'var(--font-display)' }}>
             {saving ? 'Salvando...' : 'Confirmar'}
           </button>
         </form>
@@ -206,7 +206,7 @@ function EditUserModal({ user, multiTenant, inputs, onSave, onClose }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'var(--overlay)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
       <div className="w-full max-w-xl rounded-xl overflow-hidden" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-medium)', boxShadow: 'var(--shadow-card)' }} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
           <span className="text-sm font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>Editar usuário — {user.username}</span>
@@ -248,9 +248,9 @@ function EditUserModal({ user, multiTenant, inputs, onSave, onClose }: {
                         onClick={() => toggleInstance(i.id)}
                         className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all"
                         style={{
-                          background: selected ? 'rgba(6,182,212,0.15)' : 'var(--bg-tertiary)',
+                          background: selected ? 'var(--tint)' : 'var(--bg-tertiary)',
                           color: selected ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                          border: `1px solid ${selected ? 'rgba(6,182,212,0.4)' : 'var(--border-subtle)'}`,
+                          border: `1px solid ${selected ? 'var(--line-strong)' : 'var(--border-subtle)'}`,
                           fontFamily: 'var(--font-mono)',
                         }}
                       >
@@ -270,7 +270,7 @@ function EditUserModal({ user, multiTenant, inputs, onSave, onClose }: {
 
           <div className="flex gap-2">
             <button type="submit" disabled={saving} className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold cursor-pointer hover:brightness-110 disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, var(--accent-cyan), #3b82f6)', color: '#020617', fontFamily: 'var(--font-display)' }}>
+              style={{ background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-info))', color: 'var(--off-white)', fontFamily: 'var(--font-display)' }}>
               <Check size={14} />{saving ? 'Salvando...' : 'Salvar'}
             </button>
             <button type="button" onClick={onClose} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer hover:brightness-110"
@@ -350,7 +350,7 @@ export default function UsersPage() {
       <div className="px-6 pt-4 pb-8">
 
       {error && (
-        <div className="mb-4 px-4 py-2.5 rounded-lg text-xs" style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>
+        <div className="mb-4 px-4 py-2.5 rounded-lg text-xs" style={{ background: 'var(--down-tint)', border: '1px solid var(--down-line)', color: 'var(--down)', fontFamily: 'var(--font-mono)' }}>
           {error}
         </div>
       )}
@@ -421,7 +421,7 @@ export default function UsersPage() {
                           <KeyRound size={13} />
                         </button>
                         <button onClick={() => handleDelete(u.id)} className="p-1.5 rounded-lg cursor-pointer hover:brightness-125 transition-all"
-                          style={{ background: 'rgba(239,68,68,0.08)', color: 'var(--accent-red)', border: '1px solid rgba(239,68,68,0.15)' }} title="Remover" aria-label={`Remover ${u.username}`}>
+                          style={{ background: 'var(--down-tint)', color: 'var(--down)', border: '1px solid var(--down-line)' }} title="Remover" aria-label={`Remover ${u.username}`}>
                           <Trash2 size={13} />
                         </button>
                       </div>

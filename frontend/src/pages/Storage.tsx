@@ -76,10 +76,10 @@ export default function StoragePage() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard icon={Database} label="Total de Registros" value={disk.total_rows.toLocaleString('pt-BR')} color="#3b82f6" />
-        <StatCard icon={HardDrive} label="Espaço em Disco" value={formatBytes(disk.compressed_bytes)} sub={`${formatBytes(disk.uncompressed_bytes)} descomprimido`} color="#6366f1" />
-        <StatCard icon={TrendingDown} label="Taxa de Compressão" value={`${compressionRatio}x`} sub="ClickHouse LZ4" color="#22c55e" />
-        <StatCard icon={Database} label="Média / Dia" value={avgPerDay.toLocaleString('pt-BR')} sub={`${totalDays} dias com dados`} color="#8b5cf6" />
+        <StatCard icon={Database} label="Total de Registros" value={disk.total_rows.toLocaleString('pt-BR')} color="var(--accent-info)" />
+        <StatCard icon={HardDrive} label="Espaço em Disco" value={formatBytes(disk.compressed_bytes)} sub={`${formatBytes(disk.uncompressed_bytes)} descomprimido`} color="var(--accent-info)" />
+        <StatCard icon={TrendingDown} label="Taxa de Compressão" value={`${compressionRatio}x`} sub="ClickHouse LZ4" color="var(--accent-info)" />
+        <StatCard icon={Database} label="Média / Dia" value={avgPerDay.toLocaleString('pt-BR')} sub={`${totalDays} dias com dados`} color="var(--accent-info)" />
       </div>
 
       {/* Chart: volume por dia */}
