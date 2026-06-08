@@ -274,20 +274,19 @@ export class LogsService {
     const tenantNames = this.resolveTenantNames(user);
     const activeNames = this.resolveActiveNames(user);
 
-    // Logs por dia com estimativa de tamanho
+    // Contagem por dia via rollup (instantâneo). Antes fazia
+    // sum(length(payload_raw)) GROUP BY dia na tabela crua de 290M linhas —
+    // decomprimia os 15 GB de payload e estourava o timeout (página travava).
     const dailySql = `
-      SELECT
-        toDate(timestamp) AS dia,
-        count() AS total,
-        sum(length(payload_raw)) AS payload_bytes
-      FROM nat_logs
+      SELECT toDate(hour) AS dia, sum(total_count) AS total
+      FROM nat_logs_hourly
       WHERE equipamento_origem IN {active_names:Array(String)}
       GROUP BY dia
       ORDER BY dia DESC
       LIMIT 90
     `;
 
-    // Tamanho total em disco (comprimido) via system.parts
+    // Tamanho total em disco (comprimido) via system.parts — metadados, rápido.
     const diskSql = `
       SELECT
         sum(data_compressed_bytes) AS compressed,
@@ -297,19 +296,38 @@ export class LogsService {
       WHERE table = 'nat_logs' AND active = 1
     `;
 
-    const [daily, disk] = await Promise.all([
-      this.clickhouse.query(dailySql, { active_names: activeNames }),
+    // Tamanho do payload_raw (metadados) p/ ESTIMAR bytes/dia sem ler a coluna.
+    const payloadSql = `
+      SELECT sum(column_data_uncompressed_bytes) AS bytes
+      FROM system.parts_columns
+      WHERE table = 'nat_logs' AND column = 'payload_raw' AND active = 1
+    `;
+
+    const [daily, disk, payload] = await Promise.all([
+      this.clickhouse.query<{ dia: string; total: number }>(dailySql, { active_names: activeNames }),
       tenantNames
         ? Promise.resolve([{ compressed: 0, uncompressed: 0, rows: 0 }])
         : this.clickhouse.query<{ compressed: number; uncompressed: number; rows: number }>(diskSql, {}),
+      tenantNames
+        ? Promise.resolve([{ bytes: 0 }])
+        : this.clickhouse.query<{ bytes: number }>(payloadSql, {}),
     ]);
 
+    const totalRows = Number(disk[0]?.rows ?? 0);
+    const avgPayloadPerRow = totalRows > 0 ? Number(payload[0]?.bytes ?? 0) / totalRows : 0;
+
     return {
-      daily,
+      // payload_bytes é ESTIMATIVA (coluna "Payload Estimado" na UI):
+      // média de bytes/linha do payload_raw × contagem do dia.
+      daily: daily.map(d => ({
+        dia: d.dia,
+        total: Number(d.total),
+        payload_bytes: Math.round(Number(d.total) * avgPayloadPerRow),
+      })),
       disk: {
         compressed_bytes:   Number(disk[0]?.compressed ?? 0),
         uncompressed_bytes: Number(disk[0]?.uncompressed ?? 0),
-        total_rows:         Number(disk[0]?.rows ?? 0),
+        total_rows:         totalRows,
       },
     };
   }
