@@ -315,113 +315,80 @@ export class LogsService {
   }
 
   async getStats(dto: StatsQueryDto, user?: JwtUser) {
-    const conditions: string[] = [];
-    const params: Record<string, unknown> = {};
-
     // Dashboard só considera equipamentos ativos (não arquivados).
     // Em multi-tenant, intersecta com os permitidos ao user.
     const activeNames = this.resolveActiveNames(user);
-    conditions.push('equipamento_origem IN {active_names:Array(String)}');
-    params.active_names = activeNames;
-
-    // Dashboard esconde o ruído de ICMP (CGNAT port-block). Continua no
-    // banco; judicial e busca com filtro explícito ainda enxergam.
-    conditions.push("protocolo != 'ICMP'");
+    const params: Record<string, unknown> = { active_names: activeNames };
 
     // Dropdown explícito do dashboard restringe a um único equipamento;
     // só aceita se estiver na lista ativa visível.
-    if (dto.equipamento_origem && activeNames.includes(dto.equipamento_origem)) {
-      conditions.push('equipamento_origem = {equipamento_origem:String}');
-      params.equipamento_origem = dto.equipamento_origem;
+    const hasEquip = !!(dto.equipamento_origem && activeNames.includes(dto.equipamento_origem));
+    if (hasEquip) params.equipamento_origem = dto.equipamento_origem;
+    if (dto.start_date) params.start_date = toClickhouseTs(dto.start_date);
+    if (dto.end_date) params.end_date = toClickhouseTs(dto.end_date);
+
+    // Janela curta (< 2h) → tabela crua (precisa e rápida nesse volume).
+    // Janela longa → rollups pré-agregados (nat_logs_hourly / *_ip_daily):
+    // o que era 22-29s na tabela de 290M vira <1s. O dado cru continua sendo
+    // a fonte de verdade legal; o rollup é só para o painel.
+    const spanMs =
+      dto.start_date && dto.end_date
+        ? Date.parse(dto.end_date) - Date.parse(dto.start_date)
+        : Infinity;
+    const useRollup = spanMs >= 2 * 3600 * 1000;
+
+    let totalSql: string, todaySql: string, uniquePublicIpsSql: string, uniquePrivateIpsSql: string,
+      volumeByHourSql: string, topPublicIpsSql: string, topPrivateIpsSql: string,
+      tipoNatDistSql: string, protocoloDistSql: string, equipamentoDistSql: string;
+
+    if (useRollup) {
+      // ── Rollup horário (exclui ICMP igual ao dashboard) ──
+      const h = ['equipamento_origem IN {active_names:Array(String)}', "protocolo != 'ICMP'"];
+      if (hasEquip) h.push('equipamento_origem = {equipamento_origem:String}');
+      const hDims = h.join(' AND ');
+      const hTime = [...h];
+      if (dto.start_date) hTime.push('hour >= toStartOfHour({start_date:DateTime64(3)})');
+      if (dto.end_date) hTime.push('hour <= {end_date:DateTime64(3)}');
+      const hWhere = `WHERE ${hTime.join(' AND ')}`;
+
+      // ── Rollup diário de IPs (já exclui ICMP no MV) ──
+      const d = ['equipamento_origem IN {active_names:Array(String)}'];
+      if (hasEquip) d.push('equipamento_origem = {equipamento_origem:String}');
+      if (dto.start_date) d.push('day >= toDate({start_date:DateTime64(3)})');
+      if (dto.end_date) d.push('day <= toDate({end_date:DateTime64(3)})');
+      const dWhere = `WHERE ${d.join(' AND ')}`;
+
+      totalSql = `SELECT sum(total_count) AS total FROM nat_logs_hourly ${hWhere}`;
+      todaySql = `SELECT sum(total_count) AS total FROM nat_logs_hourly WHERE toDate(hour) = toDate(now() - INTERVAL 3 HOUR) AND ${hDims}`;
+      uniquePublicIpsSql = `SELECT uniqMerge(unique_public_ips) AS total FROM nat_logs_hourly ${hWhere}`;
+      uniquePrivateIpsSql = `SELECT uniqMerge(unique_private_ips) AS total FROM nat_logs_hourly ${hWhere}`;
+      volumeByHourSql = `SELECT hour, sum(total_count) AS count FROM nat_logs_hourly WHERE hour >= now() - INTERVAL 24 HOUR AND ${hDims} GROUP BY hour ORDER BY hour`;
+      topPublicIpsSql = `SELECT toString(ip_publico) AS ip, sum(cnt) AS count, groupUniqArray(equipamento_origem) AS sources FROM nat_logs_pubip_daily ${dWhere} GROUP BY ip_publico ORDER BY count DESC LIMIT 10`;
+      topPrivateIpsSql = `SELECT toString(ip_privado) AS ip, sum(cnt) AS count, groupUniqArray(equipamento_origem) AS sources FROM nat_logs_privip_daily ${dWhere} GROUP BY ip_privado ORDER BY count DESC LIMIT 10`;
+      tipoNatDistSql = `SELECT tipo_nat, sum(total_count) AS count FROM nat_logs_hourly ${hWhere} GROUP BY tipo_nat ORDER BY count DESC`;
+      protocoloDistSql = `SELECT protocolo, sum(total_count) AS count FROM nat_logs_hourly ${hWhere} GROUP BY protocolo ORDER BY count DESC`;
+      equipamentoDistSql = `SELECT equipamento_origem, sum(total_count) AS count FROM nat_logs_hourly ${hWhere} GROUP BY equipamento_origem ORDER BY count DESC LIMIT 20`;
+    } else {
+      // ── Janela curta: tabela crua (pouco dado, rápido e preciso ao minuto) ──
+      const c = ['equipamento_origem IN {active_names:Array(String)}', "protocolo != 'ICMP'"];
+      if (hasEquip) c.push('equipamento_origem = {equipamento_origem:String}');
+      const dims = c.join(' AND ');
+      const cTime = [...c];
+      if (dto.start_date) cTime.push('timestamp >= {start_date:DateTime64(3)}');
+      if (dto.end_date) cTime.push('timestamp <= {end_date:DateTime64(3)}');
+      const where = `WHERE ${cTime.join(' AND ')}`;
+
+      totalSql = `SELECT count() AS total FROM nat_logs ${where}`;
+      todaySql = `SELECT count() AS total FROM nat_logs WHERE toDate(timestamp) = toDate(now() - INTERVAL 3 HOUR) AND ${dims}`;
+      uniquePublicIpsSql = `SELECT uniq(ip_publico) AS total FROM nat_logs ${where}`;
+      uniquePrivateIpsSql = `SELECT uniq(ip_privado) AS total FROM nat_logs ${where}`;
+      volumeByHourSql = `SELECT toStartOfHour(timestamp) AS hour, count() AS count FROM nat_logs WHERE timestamp >= now() - INTERVAL 24 HOUR AND ${dims} GROUP BY hour ORDER BY hour`;
+      topPublicIpsSql = `SELECT toString(ip_publico) AS ip, count() AS count, groupUniqArray(equipamento_origem) AS sources FROM nat_logs ${where} GROUP BY ip_publico ORDER BY count DESC LIMIT 10`;
+      topPrivateIpsSql = `SELECT toString(ip_privado) AS ip, count() AS count, groupUniqArray(equipamento_origem) AS sources FROM nat_logs ${where} GROUP BY ip_privado ORDER BY count DESC LIMIT 10`;
+      tipoNatDistSql = `SELECT tipo_nat, count() AS count FROM nat_logs ${where} GROUP BY tipo_nat ORDER BY count DESC`;
+      protocoloDistSql = `SELECT protocolo, count() AS count FROM nat_logs ${where} GROUP BY protocolo ORDER BY count DESC`;
+      equipamentoDistSql = `SELECT equipamento_origem, count() AS count FROM nat_logs ${where} GROUP BY equipamento_origem ORDER BY count DESC LIMIT 20`;
     }
-
-    if (dto.start_date) {
-      conditions.push('timestamp >= {start_date:DateTime64(3)}');
-      params.start_date = toClickhouseTs(dto.start_date);
-    }
-    if (dto.end_date) {
-      conditions.push('timestamp <= {end_date:DateTime64(3)}');
-      params.end_date = toClickhouseTs(dto.end_date);
-    }
-
-    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-    const totalSql = `SELECT count() AS total FROM nat_logs ${where}`;
-
-    const todaySql = `
-      SELECT count() AS total FROM nat_logs
-      WHERE toDate(timestamp) = toDate(now() - INTERVAL 3 HOUR)
-      ${conditions.length > 0 ? 'AND ' + conditions.join(' AND ') : ''}
-    `;
-
-    const uniquePublicIpsSql = `SELECT uniq(ip_publico) AS total FROM nat_logs ${where}`;
-    const uniquePrivateIpsSql = `SELECT uniq(ip_privado) AS total FROM nat_logs ${where}`;
-
-    const volumeByHourSql = `
-      SELECT
-        toStartOfHour(timestamp) AS hour,
-        count() AS count
-      FROM nat_logs
-      WHERE timestamp >= now() - INTERVAL 24 HOUR
-      ${conditions.length > 0 ? 'AND ' + conditions.join(' AND ') : ''}
-      GROUP BY hour
-      ORDER BY hour
-    `;
-
-    const topPublicIpsSql = `
-      SELECT
-        toString(ip_publico) AS ip,
-        count() AS count,
-        groupUniqArray(equipamento_origem) AS sources
-      FROM nat_logs
-      ${where}
-      GROUP BY ip_publico
-      ORDER BY count DESC
-      LIMIT 10
-    `;
-
-    const topPrivateIpsSql = `
-      SELECT
-        toString(ip_privado) AS ip,
-        count() AS count,
-        groupUniqArray(equipamento_origem) AS sources
-      FROM nat_logs
-      ${where}
-      GROUP BY ip_privado
-      ORDER BY count DESC
-      LIMIT 10
-    `;
-
-    const tipoNatDistSql = `
-      SELECT
-        tipo_nat,
-        count() AS count
-      FROM nat_logs
-      ${where}
-      GROUP BY tipo_nat
-      ORDER BY count DESC
-    `;
-
-    const protocoloDistSql = `
-      SELECT
-        protocolo,
-        count() AS count
-      FROM nat_logs
-      ${where}
-      GROUP BY protocolo
-      ORDER BY count DESC
-    `;
-
-    const equipamentoDistSql = `
-      SELECT
-        equipamento_origem,
-        count() AS count
-      FROM nat_logs
-      ${where}
-      GROUP BY equipamento_origem
-      ORDER BY count DESC
-      LIMIT 20
-    `;
 
     const [total, today, uniquePublic, uniquePrivate, volumeByHour, topPublicIps, topPrivateIps, tipoNatDist, protocoloDist, equipamentoDist] =
       await Promise.all([

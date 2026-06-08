@@ -27,13 +27,16 @@ SETTINGS index_granularity = 8192;
 ALTER TABLE nat_logs ADD INDEX IF NOT EXISTS idx_ip_publico ip_publico TYPE minmax GRANULARITY 4;
 ALTER TABLE nat_logs ADD INDEX IF NOT EXISTS idx_ip_privado ip_privado TYPE minmax GRANULARITY 4;
 
--- Materialized view for per-hour aggregation (dashboard queries)
+-- Rollup horário p/ o dashboard (contagem + IPs únicos por hora/proto/tipo/equip).
+-- total_count É SimpleAggregateFunction(sum): numa AggregatingMergeTree, coluna
+-- comum NÃO soma no merge — só agregada. UInt64 puro guardava 1 bloco por chave
+-- (rollup dava 23k em vez de 293M). Ver clickhouse/migrations/001-fix-rollups.sql.
 CREATE TABLE IF NOT EXISTS nat_logs_hourly (
     hour DateTime,
     protocolo LowCardinality(String),
     tipo_nat LowCardinality(String),
     equipamento_origem LowCardinality(String),
-    total_count UInt64,
+    total_count SimpleAggregateFunction(sum, UInt64),
     unique_public_ips AggregateFunction(uniq, IPv4),
     unique_private_ips AggregateFunction(uniq, IPv4)
 ) ENGINE = AggregatingMergeTree()
@@ -54,3 +57,40 @@ SELECT
     uniqState(ip_privado) AS unique_private_ips
 FROM nat_logs
 GROUP BY hour, protocolo, tipo_nat, equipamento_origem;
+
+-- Rollups diários de Top IPs (público/privado) p/ o dashboard. Excluem ICMP
+-- (ruído CGNAT, igual ao painel). Tiram o "GROUP BY ip" da tabela crua de 290M
+-- (era ~28s) — public ~234 IPs, private ~10k IPs, sobra minúsculo.
+CREATE TABLE IF NOT EXISTS nat_logs_pubip_daily (
+    day Date,
+    equipamento_origem LowCardinality(String),
+    ip_publico IPv4,
+    cnt SimpleAggregateFunction(sum, UInt64)
+) ENGINE = AggregatingMergeTree()
+PARTITION BY toYYYYMM(day)
+ORDER BY (day, equipamento_origem, ip_publico)
+TTL day + INTERVAL 15 MONTH;
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS nat_logs_pubip_daily_mv
+TO nat_logs_pubip_daily
+AS
+SELECT toDate(timestamp) AS day, equipamento_origem, ip_publico, count() AS cnt
+FROM nat_logs WHERE protocolo != 'ICMP'
+GROUP BY day, equipamento_origem, ip_publico;
+
+CREATE TABLE IF NOT EXISTS nat_logs_privip_daily (
+    day Date,
+    equipamento_origem LowCardinality(String),
+    ip_privado IPv4,
+    cnt SimpleAggregateFunction(sum, UInt64)
+) ENGINE = AggregatingMergeTree()
+PARTITION BY toYYYYMM(day)
+ORDER BY (day, equipamento_origem, ip_privado)
+TTL day + INTERVAL 15 MONTH;
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS nat_logs_privip_daily_mv
+TO nat_logs_privip_daily
+AS
+SELECT toDate(timestamp) AS day, equipamento_origem, ip_privado, count() AS cnt
+FROM nat_logs WHERE protocolo != 'ICMP'
+GROUP BY day, equipamento_origem, ip_privado;

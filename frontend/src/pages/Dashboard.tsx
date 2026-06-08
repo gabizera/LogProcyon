@@ -22,17 +22,18 @@ export default function Dashboard() {
   const [selectedInstance, setSelectedInstance] = useState<string>('');
   const [rangeMinutes, setRangeMinutes] = useState<number>(1440);
 
-  const loadStats = useCallback(async (instance?: string, range?: number) => {
+  const loadStats = useCallback(async (instance?: string, range?: number, signal?: AbortSignal) => {
     try {
-      const data = await fetchStats(instance || undefined, range);
+      const data = await fetchStats(instance || undefined, range, signal);
       setStats(data);
       setError(null);
       setLastUpdate(new Date());
     } catch (err) {
+      if (signal?.aborted || (err instanceof Error && err.name === 'CanceledError')) return;
       setError('Erro ao carregar estatísticas.');
       console.error(err);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, []);
 
@@ -41,9 +42,18 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    loadStats(selectedInstance, rangeMinutes);
-    const id = setInterval(() => loadStats(selectedInstance, rangeMinutes), 30000);
-    return () => clearInterval(id);
+    // Cada ciclo cancela a request anterior se ainda estiver voando — não
+    // empilha query no backend. Com os rollups o stats volta em <1s, então
+    // 120s de intervalo já é folgado (era 30s disparando 10 queries de 28s).
+    let ctrl: AbortController | undefined;
+    const run = () => {
+      ctrl?.abort();
+      ctrl = new AbortController();
+      loadStats(selectedInstance, rangeMinutes, ctrl.signal);
+    };
+    run();
+    const id = setInterval(run, 120000);
+    return () => { ctrl?.abort(); clearInterval(id); };
   }, [loadStats, selectedInstance, rangeMinutes]);
 
   const showSelector = inputs.length >= 1;

@@ -95,6 +95,7 @@ export interface PublicConfig {
 export async function fetchStats(
   equipamento_origem?: string,
   rangeMinutes?: number,
+  signal?: AbortSignal,
 ): Promise<StatsResponse> {
   const params = new URLSearchParams();
   if (equipamento_origem) params.set('equipamento_origem', equipamento_origem);
@@ -109,7 +110,7 @@ export async function fetchStats(
     params.set('end_date', toNaive(now));
   }
   const qs = params.toString() ? `?${params.toString()}` : '';
-  const { data } = await api.get(`/logs/stats${qs}`);
+  const { data } = await api.get(`/logs/stats${qs}`, { signal });
   return {
     total_logs:              data.total          ?? 0,
     logs_hoje:               data.today          ?? 0,
