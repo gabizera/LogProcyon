@@ -12,7 +12,7 @@
 set -euo pipefail
 
 TABLE="logprocyon"
-VOLUME_PATH="${VOLUME_PATH:-/var/lib/docker/volumes/log_shared/_data/inputs.json}"
+VOLUME_PATH="${VOLUME_PATH:-/var/lib/docker/volumes/logprocyon_logdata/_data/inputs.json}"
 
 if [ ! -f "$VOLUME_PATH" ]; then
   echo "[sync-firewall] inputs.json não encontrado em $VOLUME_PATH"

@@ -20,6 +20,9 @@ const CLICKHOUSE_USER     = process.env.CLICKHOUSE_USER     || 'default';
 const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD || '';
 const BATCH_SIZE     = parseInt(process.env.BATCH_SIZE     || '100', 10);
 const FLUSH_INTERVAL = parseInt(process.env.FLUSH_INTERVAL || '2000', 10);
+// Logar cada tradução/insert no stdout é MUITO verboso (uma linha por conexão).
+// Em CGNAT isso enche o disco via json.log do Docker. Default off — só p/ debug.
+const LOG_EVENTS     = process.env.LOG_EVENTS === 'true';
 const DATA_DIR       = process.env.DATA_DIR        || '/data';
 const CONFIG_FILE    = path.join(DATA_DIR, 'inputs.json');
 
@@ -42,11 +45,20 @@ const TZ_OFFSET_MS = parseInt(process.env.TZ_OFFSET_HOURS || '-3', 10) * 3600 * 
 // Batch buffer + flush
 let batch = [];
 let flushTimer = null;
+let spoolTimer = null;
 
 // ── ClickHouse insertion ──────────────────────────────────────────────────────
 
 const CH_TIMEOUT_MS  = parseInt(process.env.CH_TIMEOUT_MS  || '10000', 10);
 const CH_MAX_RETRIES = parseInt(process.env.CH_MAX_RETRIES || '3', 10);
+
+const INSERT_QUERY = 'INSERT INTO nat_logs (timestamp,ip_publico,ip_privado,porta_publica,porta_privada,protocolo,tipo_nat,equipamento_origem,payload_raw,tamanho_bloco) FORMAT JSONEachRow';
+
+// Spool em disco: quando o ClickHouse cai, batch que esgotou retries é gravado
+// aqui em vez de descartado (CGNAT = evidência legal; perder = gap no Marco
+// Civil). Um loop reenvia quando o CH volta. /data é volume persistente.
+const SPOOL_DIR = path.join(DATA_DIR, 'spool');
+try { fs.mkdirSync(SPOOL_DIR, { recursive: true }); } catch (e) { /* ok */ }
 
 // Quantos inserts estão em vôo — usado pelo shutdown pra esperar o flush.
 let pendingInserts = 0;
@@ -91,21 +103,21 @@ function postBatch(body, query) {
 async function insertBatch(rows) {
   if (rows.length === 0) return;
 
-  const body  = rows.map(r => JSON.stringify(r)).join('\n');
-  const query = 'INSERT INTO nat_logs (timestamp,ip_publico,ip_privado,porta_publica,porta_privada,protocolo,tipo_nat,equipamento_origem,payload_raw,tamanho_bloco) FORMAT JSONEachRow';
+  const body = rows.map(r => JSON.stringify(r)).join('\n');
 
   pendingInserts++;
   try {
     for (let attempt = 1; attempt <= CH_MAX_RETRIES; attempt++) {
       try {
-        await postBatch(body, query);
-        console.log(`[clickhouse] inserted ${rows.length} rows`);
+        await postBatch(body, INSERT_QUERY);
+        if (LOG_EVENTS) console.log(`[clickhouse] inserted ${rows.length} rows`);
         return;
       } catch (e) {
         const last = attempt === CH_MAX_RETRIES;
         console.error(`[clickhouse] insert attempt ${attempt}/${CH_MAX_RETRIES} failed: ${e.message}`);
         if (last) {
-          console.error(`[clickhouse] FATAL: descartando ${rows.length} rows após ${CH_MAX_RETRIES} tentativas`);
+          // NÃO descarta: grava em disco pra reenviar quando o CH voltar.
+          spoolBatch(body, rows.length);
           return;
         }
         await new Promise(r => setTimeout(r, 1000 * attempt));
@@ -113,6 +125,47 @@ async function insertBatch(rows) {
     }
   } finally {
     pendingInserts--;
+  }
+}
+
+// ── Spool de disco (reenvio quando o ClickHouse volta) ───────────────────────
+
+function spoolBatch(body, count) {
+  try {
+    const f = path.join(SPOOL_DIR, `batch-${Date.now()}-${process.pid}-${spoolSeq++}.ndjson`);
+    fs.writeFileSync(`${f}.tmp`, body);
+    fs.renameSync(`${f}.tmp`, f); // rename atômico — leitor nunca vê arquivo parcial
+    console.error(`[spool] ClickHouse indisponível — ${count} rows salvas em ${path.basename(f)} (reenvio automático)`);
+  } catch (e) {
+    console.error(`[spool] FALHA ao gravar spool — ${count} rows PERDIDAS: ${e.message}`);
+  }
+}
+let spoolSeq = 0;
+
+let replaying = false;
+async function replaySpool() {
+  if (replaying) return;
+  replaying = true;
+  try {
+    let files;
+    try {
+      files = fs.readdirSync(SPOOL_DIR).filter(f => f.endsWith('.ndjson')).sort();
+    } catch (e) { return; }
+    for (const name of files) {
+      const f = path.join(SPOOL_DIR, name);
+      let body;
+      try { body = fs.readFileSync(f, 'utf8'); } catch (e) { continue; }
+      if (!body.trim()) { try { fs.unlinkSync(f); } catch (e) {} continue; }
+      try {
+        await postBatch(body, INSERT_QUERY);
+        fs.unlinkSync(f);
+        console.log(`[spool] reenviado ${name}`);
+      } catch (e) {
+        break; // CH ainda fora — para e tenta no próximo ciclo (preserva ordem/arquivos)
+      }
+    }
+  } finally {
+    replaying = false;
   }
 }
 
@@ -193,9 +246,11 @@ function openSocket(port, portInputs) {
 
       if (rows.length > 0) {
         batch.push(...rows);
-        rows.forEach(r =>
-          console.log(`[event] ${matched.name} ${r.tipo_nat} ${r.protocolo} ${r.ip_privado}:${r.porta_privada} -> ${r.ip_publico}:${r.porta_publica}`)
-        );
+        if (LOG_EVENTS) {
+          rows.forEach(r =>
+            console.log(`[event] ${matched.name} ${r.tipo_nat} ${r.protocolo} ${r.ip_privado}:${r.porta_privada} -> ${r.ip_publico}:${r.porta_publica}`)
+          );
+        }
         maybeBatchFlush();
       }
     } catch (e) {
@@ -302,6 +357,8 @@ startListeners(inputs);
 startPolling();
 
 flushTimer = setInterval(scheduledFlush, FLUSH_INTERVAL);
+spoolTimer = setInterval(replaySpool, 10000); // reenvia o spool quando o CH voltar
+replaySpool();                                // recupera spool de uma queda anterior já no boot
 
 let shuttingDown = false;
 async function gracefulShutdown(signal) {
@@ -309,6 +366,7 @@ async function gracefulShutdown(signal) {
   shuttingDown = true;
   console.log(`[collector] ${signal}: shutting down...`);
   clearInterval(flushTimer);
+  clearInterval(spoolTimer);
   clearInterval(pollTimer);
   for (const { server } of sockets.values()) server.close();
 

@@ -72,12 +72,25 @@ if [ "${NINPUTS:-0}" -gt 0 ] && [ "${LASTMIN:-999999}" -gt "$INGEST_MAX_MIN" ]; 
   PROB="${PROB}• INGESTÃO PARADA: sem log novo há ${LASTMIN} min (gap legal — verifique equipamentos/collector); "
 fi
 
-# 5. frescor do backup (mês corrente + log do dia)
+# 5. frescor do backup (mês corrente + idade do último backup)
 CURM=$(date +%Y%m)
 [ -f "$BACKUP_DIR/nat_logs-${CURM}.native.gz" ] || PROB="${PROB}• sem backup do mês ${CURM}; "
+# Idade do último backup concluído, NÃO "tem backup com a data de hoje": como o
+# backup roda 03:30, entre 00h e 03:30 o de hoje ainda não existe e isso dava
+# alerta falso todo dia. 26h cobre a cadência diária com folga.
+BACKUP_MAX_AGE_H="${BACKUP_MAX_AGE_H:-26}"
 if [ -f "$BACKUP_DIR/backup.log" ]; then
-  grep -q "BACKUP CONCLUÍDO ($(date +%Y%m%d)" "$BACKUP_DIR/backup.log" 2>/dev/null || \
-    PROB="${PROB}• backup não concluiu hoje; "
+  LASTBK=$(grep "BACKUP CONCLUÍDO" "$BACKUP_DIR/backup.log" 2>/dev/null | tail -1 \
+            | sed -n 's/.*(\([0-9]\{8\}\)-\([0-9]\{4\}\)).*/\1 \2/p')
+  if [ -n "$LASTBK" ]; then
+    D8=${LASTBK% *}; HM=${LASTBK#* }
+    BK_EPOCH=$(date -d "${D8:0:4}-${D8:4:2}-${D8:6:2} ${HM:0:2}:${HM:2:2}" +%s 2>/dev/null || echo 0)
+    AGE_H=$(( ( $(date +%s) - BK_EPOCH ) / 3600 ))
+    [ "$BK_EPOCH" -gt 0 ] && [ "$AGE_H" -ge "$BACKUP_MAX_AGE_H" ] && \
+      PROB="${PROB}• último backup há ${AGE_H}h (limite ${BACKUP_MAX_AGE_H}h); "
+  else
+    PROB="${PROB}• nenhum backup concluído registrado; "
+  fi
 fi
 
 HOST=$(hostname)

@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!--
+  TTL nas tabelas internas de telemetria do ClickHouse (system.*_log).
+  Por padrão elas crescem sem limite: neste deploy chegaram a ~11 GB
+  (text_log sozinho com 5,76 GB / 183M linhas, inflado pelo loop de
+  erro de disco cheio). Não são dado da aplicação — só diagnóstico do
+  banco. Aqui damos retenção curta para que se auto-limpem.
+
+  Mesclado em /etc/clickhouse-server/config.d/ — só adiciona <ttl> aos
+  nós já definidos pela imagem.
+-->
+<clickhouse>
+    <!-- Ruído de alto volume — 3 dias bastam para diagnóstico recente. -->
+    <text_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></text_log>
+    <trace_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></trace_log>
+    <metric_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></metric_log>
+    <asynchronous_metric_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></asynchronous_metric_log>
+    <processors_profile_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></processors_profile_log>
+    <query_views_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></query_views_log>
+
+    <!-- Diagnóstico útil — retenção um pouco maior. -->
+    <query_log><ttl>event_date + INTERVAL 14 DAY DELETE</ttl></query_log>
+    <part_log><ttl>event_date + INTERVAL 14 DAY DELETE</ttl></part_log>
+    <error_log><ttl>event_date + INTERVAL 30 DAY DELETE</ttl></error_log>
+</clickhouse>

@@ -5,10 +5,21 @@
 # Variáveis obrigatórias ficam em .env (ver .env.example).
 name: logprocyon
 
+# Rotação de log dos containers (json-file): teto por container e compressão
+# na rotação. Sem isto o stdout do container vira um json.log sem limite — foi
+# o que encheu o disco (46 GB só do collector). 20m x 5 = 100 MB/container máx.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+    compress: "true"
+
 services:
   clickhouse:
     image: clickhouse/clickhouse-server:24.8
     container_name: log-clickhouse
+    logging: *default-logging
     environment:
       - CLICKHOUSE_USER=default
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD obrigatório no .env}
@@ -16,6 +27,11 @@ services:
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      # TTL nas tabelas internas (system.*_log). Sem isto text_log/query_log/etc
+      # crescem sem limite — chegaram a ~11 GB neste deploy.
+      - ./clickhouse/config.d/clickhouse-logs.xml:/etc/clickhouse-server/config.d/clickhouse-logs.xml:ro
+      # Teto de memória (< mem_limit 3g) — evita OOM-kill, dá erro gracioso.
+      - ./clickhouse/users.d/memory.xml:/etc/clickhouse-server/users.d/memory.xml:ro
     ports:
       - "127.0.0.1:8123:8123"
     ulimits:
@@ -39,6 +55,7 @@ services:
     build:
       context: ./collector
     container_name: log-collector
+    logging: *default-logging
     # host networking: o collector bind o range dedicado 20000-20199/udp
     # direto e enxerga o IP de origem real (2ª camada source_ip).
     network_mode: host
@@ -52,6 +69,9 @@ services:
       - LISTEN_PORT=514
       - BATCH_SIZE=100
       - FLUSH_INTERVAL=2000
+      # Log por tradução NAT no stdout (MUITO verboso — uma linha por conexão).
+      # Default off; ligue só para depurar um equipamento específico.
+      - LOG_EVENTS=${LOG_EVENTS:-false}
       - TZ_OFFSET_HOURS=${TZ_OFFSET_HOURS:--3}
       - DATA_DIR=/data
     volumes:
@@ -70,6 +90,7 @@ services:
     build:
       context: ./backend
     container_name: log-backend
+    logging: *default-logging
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -99,6 +120,7 @@ services:
     build:
       context: ./frontend
     container_name: log-frontend
+    logging: *default-logging
     # Atrás do reverse-proxy externo que termina TLS. FRONTEND_PORT é a
     # porta interna que o proxy encaminha (default 80).
     ports:

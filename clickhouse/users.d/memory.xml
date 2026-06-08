@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!--
+  Teto de memória do ClickHouse. O container tem mem_limit 3g; sem teto, uma
+  query pesada faz o Docker dar OOM-KILL no processo (morte abrupta) em vez de
+  um erro gracioso. max_memory_usage < mem_limit garante erro tratável; o
+  external_group_by derrama agregações grandes no disco em vez de estourar.
+
+  Vai em users.d/ (não config.d/): é setting de profile, mora sob <profiles>.
+-->
+<clickhouse>
+    <profiles>
+        <default>
+            <max_memory_usage>2500000000</max_memory_usage>
+            <max_bytes_before_external_group_by>1500000000</max_bytes_before_external_group_by>
+        </default>
+    </profiles>
+</clickhouse>
